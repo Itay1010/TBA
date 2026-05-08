@@ -1,0 +1,215 @@
+:root {
+  --bg-app: #ffffff;
+  --bg-grid: rgba(249, 250, 251, 0.5);
+  --bg-surface: #ffffff;
+  --bg-surface-blur: rgba(255, 255, 255, 0.9);
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --border-light: #e5e7eb;
+  --border-medium: rgba(229, 231, 235, 0.5);
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: #e0e7ff;
+
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+
+  --current-time: #ef4444;
+
+  --unallotted-bg: rgba(229, 231, 235, 0.4);
+  --unallotted-stripe: rgba(150, 150, 150, 0.08);
+  --unallotted-badge-bg: rgba(229, 231, 235, 0.9);
+
+  --today-bg: rgba(238, 242, 255, 0.4);
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-app: #09090b;
+    --bg-grid: rgba(24, 24, 27, 0.3);
+    --bg-surface: #18181b;
+    --bg-surface-blur: rgba(9, 9, 11, 0.9);
+    --text-main: #f9fafb;
+    --text-muted: #9ca3af;
+    --border-light: #27272a;
+    --border-medium: rgba(39, 39, 42, 0.5);
+
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-light: rgba(49, 46, 129, 0.3);
+
+    --danger: #ef4444;
+    --danger-light: rgba(239, 68, 68, 0.1);
+
+    --unallotted-bg: rgba(39, 39, 42, 0.3);
+    --unallotted-badge-bg: rgba(39, 39, 42, 0.9);
+
+    --today-bg: rgba(49, 46, 129, 0.1);
+  }
+}
+
+/* Theme Colors */
+.theme-blue {
+  --t-bg: rgba(219, 234, 254, 0.9);
+  --t-border: #93c5fd;
+  --t-text: #1e3a8a;
+  --t-dot: #3b82f6;
+}
+.theme-green {
+  --t-bg: rgba(220, 252, 231, 0.9);
+  --t-border: #86efac;
+  --t-text: #166534;
+  --t-dot: #22c55e;
+}
+.theme-purple {
+  --t-bg: rgba(243, 232, 255, 0.9);
+  --t-border: #d8b4fe;
+  --t-text: #581c87;
+  --t-dot: #a855f7;
+}
+.theme-orange {
+  --t-bg: rgba(255, 237, 213, 0.9);
+  --t-border: #fdba74;
+  --t-text: #9a3412;
+  --t-dot: #f97316;
+}
+.theme-rose {
+  --t-bg: rgba(255, 228, 230, 0.9);
+  --t-border: #fda4af;
+  --t-text: #9f1239;
+  --t-dot: #f43f5e;
+}
+.theme-gray {
+  --t-bg: rgba(229, 231, 235, 0.9);
+  --t-border: #9ca3af;
+  --t-text: #111827;
+  --t-dot: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  .theme-blue {
+    --t-bg: rgba(30, 58, 138, 0.5);
+    --t-border: #1d4ed8;
+    --t-text: #dbeafe;
+  }
+  .theme-green {
+    --t-bg: rgba(20, 83, 45, 0.5);
+    --t-border: #15803d;
+    --t-text: #dcfce7;
+  }
+  .theme-purple {
+    --t-bg: rgba(88, 28, 135, 0.5);
+    --t-border: #7e22ce;
+    --t-text: #f3e8ff;
+  }
+  .theme-orange {
+    --t-bg: rgba(124, 45, 18, 0.5);
+    --t-border: #c2410c;
+    --t-text: #ffedd5;
+  }
+  .theme-rose {
+    --t-bg: rgba(136, 19, 55, 0.5);
+    --t-border: #be123c;
+    --t-text: #ffe4e6;
+  }
+  .theme-gray {
+    --t-bg: rgba(39, 39, 42, 0.8);
+    --t-border: #52525b;
+    --t-text: #f3f4f6;
+  }
+}
+
+/* Base Resets & Typography */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font: inherit;
+}
+input,
+select {
+  font: inherit;
+}
+
+
+#root {
+  // width: 1126px;
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  border-inline: 1px solid var(--border);
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+}
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
+  }
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
