@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path';
 
-
 export default defineConfig({
   base: './',
   plugins: [
@@ -12,15 +11,14 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(import.meta.dirname, 'index.html'),
-        sw: path.resolve(import.meta.dirname, 'src/sw.ts')
+        sw: {
+          
+        }
       },
       output: {
         entryFileNames: (assetInfo) => {
-          if (assetInfo.name === 'sw') {
-            return 'sw.js';
-          }
           // Use default hashing for all other JS files (like your React components)
-          return 'assets/[name]-[hash].js';
+          return assetInfo.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js';
         }
       }
     }

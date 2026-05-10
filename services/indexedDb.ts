@@ -1,7 +1,8 @@
-import "./indexedDB.h"
+import "./indexedDB.h.ts"
 const IDB_STORE_NAME = "TBA-ST";
 const IDB_DB_NAME = "TBA-DB";
 const DB_VERSION = 1;
+
 export function openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(IDB_DB_NAME, DB_VERSION);
@@ -44,26 +45,50 @@ async function getFromIndexedDB(key: string): Promise<any> {
     });
 }
 
-export async function IDBSave(key: string, data: any) {
-    console.log('Saving data to IndexedDB:', data);
+/**
+ * Saves data to both IndexedDB and localStorage for immediate UI state availability.
+ * @param key Unique key for the data.
+ * @param data The schedule data to save.
+ */
+export async function IDBSave(key: string, data: any): Promise<void> {
+    console.log('Saving data to persistence layers:', data);
     try {
+        // 1. Save to IndexedDB (for robust, structured data)
         await saveToIndexedDB(key, data);
         console.log('data saved successfully to IndexedDB.');
+
+        // 2. Save to localStorage (for immediate, simple fallback UI state)
+        localStorage.setItem('calendarSchedule', JSON.stringify(data));
+        console.log('data saved successfully to localStorage.');
     } catch (error) {
-        console.error('Error saving to IndexedDB:', error);
+        console.error('Error saving to IndexedDB or localStorage:', error);
     }
 }
 
-export async function IDBGet(key: string) {
-    const saved = await getFromIndexedDB(key);
-    console.log('Retrieved data from IndexedDB:', saved);
-    return saved || {};
+export async function IDBGet(key: string): Promise<any> {
+    const savedFromIDB = await getFromIndexedDB(key);
+    
+    // Return data from IDB if available, otherwise fall back to localStorage
+    if (savedFromIDB) {
+        console.log('Retrieved data from IndexedDB:', savedFromIDB);
+        return savedFromIDB;
+    } else {
+        console.warn('No data found in IndexedDB, attempting fallback from localStorage.');
+        const savedFromLS = localStorage.getItem('calendarSchedule');
+        if (savedFromLS) {
+            return JSON.parse(savedFromLS);
+        }
+        console.warn('No data found in either IndexedDB or localStorage.');
+        return undefined;
+    }
 }
 
 export async function IDBGetSchedule(): Promise<Schedule | null> {
-    return IDBGet('calendarSchedule') || null;
+    const result = await IDBGet('calendarSchedule');
+    return result ? result as Schedule : null;
 }
 
 export async function IDBSetSchedule(data: Schedule): Promise<void> {
-    IDBSave('calendarSchedule', data)
+    // This function now delegates to IDBSave which handles both layers
+    await IDBSave('calendarSchedule', data);
 }

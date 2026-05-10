@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, use } from 'react';
 import { Plus, Trash2, X, CalendarDays, Save } from 'lucide-react';
 import './App.scss'
 import { fetchSchedule, saveScheduleToApi } from '../services/fetch';
+import { IDBGetSchedule, IDBSetSchedule } from '../services/indexedDb';
 
 // ==========================================
 // Constants & Utilities
-// ==========================================
+// ============================================
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const HEBREW_DAYS = {
   'Sunday': 'א׳',
@@ -90,13 +91,14 @@ const getUnallottedBlocks = (dayBlocks) => {
 
 // ==========================================
 // Main Application Component
-// ==========================================
+// ==============================================
 export default function App() {
   const scrollContainerRef = useRef(null);
+  const [loading, setLoading] = useState();
   const [schedule, setSchedule] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STROAGE_KEY);
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { return JSON.parse(saved); } catch (e) { }
     }
     return DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
   });
@@ -119,10 +121,33 @@ export default function App() {
     }
   });
 
+  // Effect to save to local storage whenever schedule changes (for immediate UI feedback)
   useEffect(() => {
     localStorage.setItem(LOCAL_STROAGE_KEY, JSON.stringify(schedule));
   }, [schedule]);
 
+
+  useEffect(() => {
+    const getState = async () => {
+      // Initialize state by reading from IndexedDB, falling back to localStorage
+      try {
+        const dbSchedule = await IDBGetSchedule();
+        if (dbSchedule) setSchedule(dbSchedule);
+        console.log("IndexedDB empty, attempting localStorage fallback.");
+        const localSchedule = localStorage.getItem(LOCAL_STROAGE_KEY);
+        if (localSchedule) {
+          return setSchedule(JSON.parse(localSchedule));
+        }
+      } catch (e) {
+        console.error("Error reading schedule from local persistence layers.", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    getState()
+  }, []);
+
+  // Effect to handle time ticking
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -131,9 +156,8 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Effect to handle Ctrl+S shortcut
   useEffect(() => {
-
-
     const handleKeyDown = (event) => {
       if (event instanceof KeyboardEvent) {
         if ((event.ctrlKey || event.metaKey) && event.key === 's') {
@@ -145,17 +169,17 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
 
-    // Cleanup the listener when the component unmounts
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [])
+  }, []);
 
+  // Effect for scrolling to current time
   useEffect(() => {
     if (scrollContainerRef.current) {
       const targetScroll = Math.max(0, currentTimeMins - 120);
       scrollContainerRef.current.scrollTop = targetScroll;
     }
   }, [currentTimeMins]);
-    
+
   const handleGridClick = (day, e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -179,13 +203,12 @@ export default function App() {
     });
   };
 
-  const openEditModal = (e, day, block) => {
-    e.stopPropagation();
+  const openEdit = (data) => {
     setModalState({
       isOpen: true,
       isEditing: true,
-      originalDay: day,
-      formData: { ...block, day }
+      originalDay: data.day,
+      formData: { ...data, id: data.id }
     });
   };
 
@@ -238,10 +261,25 @@ export default function App() {
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
-  // if (!scheduleFromServer && !schedule)
-  // return (
-  // <div>Loading...</div>
-  // )
+  // Main handler for saving the entire schedule
+  const handleSaveSchedule = async () => {
+    console.log("Attempting to save schedule:", schedule);
+    // 1. Attempt to sync to API. This call will attempt to update the DB/LS on success.
+    const success = await saveScheduleToApi(schedule);
+
+    if (success) {
+      console.log("Schedule saved successfully (API confirmed write to persistence).");
+      alert("Schedule saved successfully! (Checks network/local cache)");
+    } else {
+      console.error("Failed to sync schedule to API. Local state remains accurate.");
+      alert("Failed to sync schedule to the server. Changes saved locally.");
+    }
+  }
+
+  if (loading) return (
+    <div>Loading...</div>
+  )
+
   return (
     <>
       <div dir="rtl" className="app-container">
@@ -270,7 +308,7 @@ export default function App() {
           </button>
           <button
             className='btn-save'
-            onClick={ev => saveScheduleToApi(schedule)}
+            onClick={handleSaveSchedule}
           >
             <Save size={16} strokeWidth={2.5} /> <span>שמור</span>
           </button>
@@ -360,7 +398,7 @@ export default function App() {
                       return (
                         <div
                           key={block.id}
-                          onClick={(e) => openEditModal(e, day, block)}
+                          onClick={(e) => openEdit(block)}
                           className={`user-block theme-${block.color}`}
                           style={{ top: `${startMins}px`, height: `${height}px` }}
                         >
@@ -378,7 +416,7 @@ export default function App() {
               </div>
 
             </div>
-          </div>
+          </div >
         </div>
 
         {/* Modal */}
@@ -390,7 +428,7 @@ export default function App() {
                 <button onClick={closeModal} className="btn-close">
                   <X size={18} strokeWidth={2.5} />
                 </button>
-              </div>
+              </div >
 
               <div className="form-group">
                 <label>שם האירוע</label>
@@ -403,7 +441,7 @@ export default function App() {
                   value={modalState.formData.title}
                   onChange={handleFormChange}
                 />
-              </div>
+              </div >
 
               <div className="form-row">
                 <div className="form-group">
@@ -415,7 +453,7 @@ export default function App() {
                     value={modalState.formData.startTime}
                     onChange={handleFormChange}
                   />
-                </div>
+                </div >
                 <div className="form-group">
                   <label>סיום</label>
                   <input
@@ -425,7 +463,7 @@ export default function App() {
                     value={modalState.formData.endTime}
                     onChange={handleFormChange}
                   />
-                </div>
+                </div >
               </div>
 
               <div className="form-group">
@@ -438,7 +476,7 @@ export default function App() {
                 >
                   {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{HEBREW_DAYS[d]}</option>)}
                 </select>
-              </div>
+              </div >
 
               <div className="form-group">
                 <label>צבע</label>
@@ -450,8 +488,8 @@ export default function App() {
                       className={`color-btn theme-${theme} ${modalState.formData.color === theme ? 'active' : ''}`}
                     />
                   ))}
-                </div>
-              </div>
+                </div >
+              </div >
 
               <div className="modal-actions">
                 {modalState.isEditing ? (
@@ -468,12 +506,12 @@ export default function App() {
                   >
                     שמור
                   </button>
-                </div>
+                </div >
               </div>
             </div>
           </div>
         )}
-      </div>
+      </div >
     </>
   );
 }

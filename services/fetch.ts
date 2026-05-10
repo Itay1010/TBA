@@ -1,8 +1,10 @@
+import { IDBSetSchedule } from './indexedDb';
 export const defaultGetHeaders = { 'Accept': 'application/json' };
 export const defaultPostHeaders = { 'Content-Type': 'application/json' };
 export const SCHEDULE_API_PATH = '/api/schedule';
 
 type defaultOptionsType = { headers: HeadersInit, method: string, body: any }
+
 export async function fetchFromApi(reqPath: RequestInfo | URL, options: Record<string, any> = {}) {
     const defaultOptions: defaultOptionsType = { headers: defaultGetHeaders, method: 'get', body: null };
     options = { ...defaultOptions, ...options };
@@ -22,7 +24,13 @@ export function fetchSchedule() {
     return fetchFromApi(SCHEDULE_API_PATH, { method: 'get' })
 }
 
-
-export function saveScheduleToApi(schedule: Schedule) {
-    return fetchFromApi(SCHEDULE_API_PATH, { body: JSON.stringify(schedule), method: "post", headers: { 'Content-Type': 'application/json' } })
+export async function saveScheduleToApi(schedule: Schedule) {
+    const apiResponse = await fetchFromApi(SCHEDULE_API_PATH, { body: JSON.stringify(schedule), method: "post", headers: { 'Content-Type': 'application/json' } });
+    
+    // If API call succeeds, update local persistence (IndexedDB handles localStorage too)
+    if (apiResponse) {
+        await IDBSetSchedule(schedule);
+        return true; // Indicate success for optimistic UI update
+    }
+    return false; // Indicate failure
 }
