@@ -25,11 +25,12 @@ export function fetchSchedule() {
 }
 
 export async function saveScheduleToApi(schedule: Schedule) {
+    // await IDBSetSchedule(schedule);
+    console.log("save sync", schedule);
+    
     const apiResponse = await fetchFromApi(SCHEDULE_API_PATH, { body: JSON.stringify(schedule), method: "post", headers: { 'Content-Type': 'application/json' } });
     
-    // If API call succeeds, update local persistence (IndexedDB handles localStorage too)
     if (apiResponse) {
-        await IDBSetSchedule(schedule);
         return true; // Indicate success for optimistic UI update
     }
     return false; // Indicate failure

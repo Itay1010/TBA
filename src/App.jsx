@@ -132,11 +132,13 @@ export default function App() {
       // Initialize state by reading from IndexedDB, falling back to localStorage
       try {
         const dbSchedule = await IDBGetSchedule();
-        if (dbSchedule) setSchedule(dbSchedule);
+        
+        if (dbSchedule && Object.keys(dbSchedule).length !== 0) return setSchedule(() => ({ ...dbSchedule }));
         console.log("IndexedDB empty, attempting localStorage fallback.");
         const localSchedule = localStorage.getItem(LOCAL_STROAGE_KEY);
         if (localSchedule) {
-          return setSchedule(JSON.parse(localSchedule));
+          const parsedSched = JSON.parse(localSchedule);
+          return setSchedule(() => ({ ...parsedSched }));
         }
       } catch (e) {
         console.error("Error reading schedule from local persistence layers.", e);
@@ -162,7 +164,7 @@ export default function App() {
       if (event instanceof KeyboardEvent) {
         if ((event.ctrlKey || event.metaKey) && event.key === 's') {
           event.preventDefault();
-          saveScheduleToApi(schedule)
+          handleSaveSchedule()
         }
       }
     };
@@ -170,7 +172,7 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [schedule]);
 
   // Effect for scrolling to current time
   useEffect(() => {
@@ -308,7 +310,7 @@ export default function App() {
           </button>
           <button
             className='btn-save'
-            onClick={handleSaveSchedule}
+            onClick={() => handleSaveSchedule()}
           >
             <Save size={16} strokeWidth={2.5} /> <span>שמור</span>
           </button>
@@ -398,7 +400,7 @@ export default function App() {
                       return (
                         <div
                           key={block.id}
-                          onClick={(e) => openEdit(block)}
+                          onClick={(e) => { e.stopPropagation(); openEdit(block); }}
                           className={`user-block theme-${block.color}`}
                           style={{ top: `${startMins}px`, height: `${height}px` }}
                         >

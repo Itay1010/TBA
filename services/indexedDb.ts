@@ -58,8 +58,10 @@ export async function IDBSave(key: string, data: any): Promise<void> {
         console.log('data saved successfully to IndexedDB.');
 
         // 2. Save to localStorage (for immediate, simple fallback UI state)
-        localStorage.setItem('calendarSchedule', JSON.stringify(data));
-        console.log('data saved successfully to localStorage.');
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('calendarSchedule', JSON.stringify(data));
+            console.log('data saved successfully to localStorage.');
+        }
     } catch (error) {
         console.error('Error saving to IndexedDB or localStorage:', error);
     }
@@ -67,19 +69,22 @@ export async function IDBSave(key: string, data: any): Promise<void> {
 
 export async function IDBGet(key: string): Promise<any> {
     const savedFromIDB = await getFromIndexedDB(key);
-    
+
     // Return data from IDB if available, otherwise fall back to localStorage
     if (savedFromIDB) {
         console.log('Retrieved data from IndexedDB:', savedFromIDB);
         return savedFromIDB;
     } else {
-        console.warn('No data found in IndexedDB, attempting fallback from localStorage.');
-        const savedFromLS = localStorage.getItem('calendarSchedule');
-        if (savedFromLS) {
-            return JSON.parse(savedFromLS);
+        console.warn('No data found in IndexedDB.');
+        if (typeof localStorage !== 'undefined') {
+            console.warn('Attempting fallback from localStorage.')
+            const savedFromLS = localStorage.getItem('calendarSchedule');
+            if (savedFromLS) {
+                return JSON.parse(savedFromLS);
+            }
+            console.warn('No data found in either IndexedDB or localStorage.');
+            return undefined;
         }
-        console.warn('No data found in either IndexedDB or localStorage.');
-        return undefined;
     }
 }
 
