@@ -157,11 +157,10 @@ export default function App() {
         }
       } catch (e) {
         console.error("Error reading schedule from local persistence layers.", e);
-      } finally {
-        setLoading(false);
       }
     }
-    getState()
+        
+    getState().finally(() => setLoading(false))
   }, []);
 
   // Effect to handle time ticking
