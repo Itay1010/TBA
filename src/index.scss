@@ -157,7 +157,6 @@ select {
   font: inherit;
 }
 
-
 #root {
   // width: 1126px;
   max-width: 100%;
@@ -178,12 +177,12 @@ h2 {
 }
 
 h1 {
-  font-size: 56px;
+  font-size: 36px;
   letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  margin: 20px 0;
+  @media (min-width: 1024px) {
+    margin: 32px 0;
+    font-size: 56px;
   }
 }
 h2 {
