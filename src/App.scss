@@ -525,6 +525,25 @@
       }
     }
   }
+  .time-slots-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow: scroll;
+    max-height: 200px;
+    padding: 16px 0px;
+    
+    .time-slot-card {
+      padding: 10px;
+      background: var(--bg-secondary, #f9fafb);
+      border-radius: 8px;
+      border: 1px solid var(--border-color, #e5e7eb);
+    }
+
+    @media (min-width: 640px) {
+      max-height: 500px;
+    }
+  }
 }
 
 @keyframes fadeIn {
