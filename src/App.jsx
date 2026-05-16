@@ -131,7 +131,12 @@ export default function App() {
       try {
         // FIX: Directly fetch from API to bypass the Service Worker race condition
         // If the SW hasn't finished dumping to IDB, this ensures we get the freshest state on load.
-        const freshSchedule = await fetchSchedule();
+        const freshScheduleRes = await fetchSchedule();
+        let freshSchedule;
+        if(freshScheduleRes && typeof(freshScheduleRes) === 'string')
+          freshSchedule = JSON.parse(freshScheduleRes);
+        else
+          freshSchedule = freshScheduleRes;
         if (freshSchedule && Object.keys(freshSchedule).length !== 0) {
           await IDBSetSchedule(freshSchedule); // Sync DB so SW stays happy
           setSchedule(() => ({ ...freshSchedule }));
@@ -157,11 +162,10 @@ export default function App() {
         }
       } catch (e) {
         console.error("Error reading schedule from local persistence layers.", e);
-      } finally {
-        setLoading(false);
       }
     }
-    getState()
+        
+    getState().finally(() => setLoading(false))
   }, []);
 
   // Effect to handle time ticking
@@ -563,7 +567,7 @@ export default function App() {
                               type="button"
                               onClick={(e) => { e.preventDefault(); toggleDay(index, d); }}
                               style={{
-                                flex: 1, padding: '6px 2px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s',
+                                flex: 1, padding: '6px 2px', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s',
                                 border: `1px solid ${isSelected ? '#3b82f6' : '#d1d5db'}`,
                                 backgroundColor: isSelected ? '#3b82f6' : 'transparent',
                                 color: isSelected ? '#fff' : 'inherit',
