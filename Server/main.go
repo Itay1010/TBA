@@ -9,12 +9,6 @@ import (
 )
 
 func main() {
-	srv.LoadEnv()
-	e := srv.InitDb()
-	if e != nil {
-		fmt.Printf("%v", e)
-		return
-	}
 
 	loggerFile := srv.WireLogger()
 	if loggerFile == nil {
@@ -25,6 +19,11 @@ func main() {
 	err := srv.LoadEnv()
 	if srv.Check(err) {
 		panic(err)
+	}
+	e := srv.InitDb()
+	if e != nil {
+		fmt.Printf("%v", e)
+		return
 	}
 
 	_port, _exsists := os.LookupEnv("PORT")
