@@ -9,10 +9,24 @@ import (
 )
 
 func main() {
+	srv.LoadEnv()
+	e := srv.InitDb()
+	if e != nil {
+		fmt.Printf("%v", e)
+		return
+	}
+
+	loggerFile := srv.WireLogger()
+	if loggerFile == nil {
+		panic(fmt.Errorf("Error: Logger cannot be wired for some reason"))
+	}
+	defer loggerFile.Close()
+
 	err := srv.LoadEnv()
 	if srv.Check(err) {
-		fmt.Println(err)
+		panic(err)
 	}
+
 	_port, _exsists := os.LookupEnv("PORT")
 	PORT := "3000"
 	if _exsists {
@@ -30,7 +44,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:           fmt.Sprintf(":%s", PORT),
-		MaxHeaderBytes: 1 << 20,
+		MaxHeaderBytes: 0, // Using DefaultMaxHeaderBytes
 	}
 
 	/* Serve */
