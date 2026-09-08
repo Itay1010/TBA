@@ -10,10 +10,13 @@ import (
 	"gorm.io/gorm"
 )
 
-type userID string
-
-type Day string
-type BlockDays map[Day][]Block
+type UserID string
+type BlockID string
+type UserSessionID string
+type (
+	Day       string
+	BlockDays map[Day][]Block
+)
 
 const (
 	Sunday    Day = "Sunday"
@@ -25,37 +28,33 @@ const (
 	Saturday  Day = "Saturday"
 )
 
+type UserDB struct {
+	UserID    UserID        `json:"user_id" gorm:"primaryKey"`
+	SessionID UserSessionID `json:"session_id"`
+}
+
 type User struct {
-	UserID userID `json:"user_id"`
+	UserID UserID `json:"user_id" gorm:"primaryKey"`
 }
 
-//	type Block struct {
-//		BlockID   string    `gorm:"block_id"`
-//		UserID    userID    `gorm:"user_id"`
-//		Day       Day       `gorm:"day"`
-//		Title     string    `gorm:"title"`
-//		Color     string    `gorm:"color"`
-//		StartTime time.Time `gorm:"column:start_time;type:time"` // Assumes zero hour/millisecond for simplicity
-//		EndTime   time.Time `gorm:"column:end_time;type:time"`   // Assumes zero hour/millisecond for simplicity
-//	}
 type Block struct {
-	BlockID   string `json:"block_id"`
-	UserID    userID `json:"user_id"`
-	Day       Day    `json:"day"`
-	Title     string `json:"title"`
-	Color     string `json:"color"`
-	StartTime string `json:"start_time"` // Assumes zero hour/millisecond for simplicity
-	EndTime   string `json:"end_time"`   // Assumes zero hour/millisecond for simplicity
+	BlockID   BlockID `json:"block_id" gorm:"primaryKey;type:varchar(225);default:(UUID());not"`
+	UserID    UserID  `json:"user_id" gorm:"uniqueIndex"`
+	Day       Day     `json:"day"`
+	Title     string  `json:"title"`
+	Color     string  `json:"color"`
+	StartTime string  `json:"start_time"` // Assumes zero hour/millisecond for simplicity
+	EndTime   string  `json:"end_time"`   // Assumes zero hour/millisecond for simplicity
 }
 
-type Schedule struct {
-	UserID userID
-	Blocks *BlockDays
+type Schedule struct { // Maybe embed User struct into Schedule?
+	UserID UserID     `json:"user_id"`
+	Blocks *BlockDays `json:"blocks"`
 }
 
 var _DBHandler *gorm.DB
 
-func InitDb() error {
+func InitDB() error {
 	if _DBHandler != nil {
 		return nil
 	}
@@ -102,8 +101,7 @@ func getDSN() (string, error) {
 	case !portExsists:
 		return "", DBE.MissingURI
 	}
-	// return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local", username, pass, dbAdd, dbPort, dbName), nil
-	return fmt.Sprintf("%s%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local", username, pass, dbAdd, dbPort, dbName), nil // for tests
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local", username, pass, dbAdd, dbPort, dbName), nil
 }
 
 func valid() error {
@@ -120,19 +118,11 @@ func valid() error {
 	return nil // All good
 }
 
-// func Query(q string) error {
-// 	if err := valid(); err != nil {
-// 		return err
-// 	}
-// 	_DBHandler.Prepare("SELECT id, title, completed, attachment FROM todos")
-// 	return nil
-// }
-
-func GetSchedule(ctx context.Context, uID userID) (*Schedule, error) {
+func GetSchedule(ctx context.Context, uid UserID) (*Schedule, error) {
 	if err := valid(); err != nil {
 		return nil, err
 	}
-	blocks, err := gorm.G[Block](_DBHandler).Where("user_id = ?", uID).Find(ctx)
+	blocks, err := gorm.G[Block](_DBHandler).Where("user_id = ?", (uid)).Find(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -142,8 +132,44 @@ func GetSchedule(ctx context.Context, uID userID) (*Schedule, error) {
 		blockDays[currDay] = append(blockDays[currDay], block)
 	}
 	sch := Schedule{
-		UserID: uID,
+		UserID: uid,
 		Blocks: &blockDays,
 	}
 	return &sch, nil
 }
+
+func GetBlocks(ctx context.Context, uid UserID) ([]Block, error) {
+	if err := valid(); err != nil {
+		return nil, err
+	}
+	blocks, err := gorm.G[Block](_DBHandler).Where("user_id = ?", (uid)).Find(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+
+func UpdateBlocks(ctx context.Context, blocks []Block) error {
+	if err := valid(); err != nil {
+		return err
+	}
+	if len(blocks) == 0 {
+		return DBE.MissingBlocks
+	}
+	_DBHandler.Save(&blocks)
+
+	return nil
+}
+
+func DeleteBlocks(ctx context.Context, blocks []Block) error {
+	if err := valid(); err != nil {
+		return err
+	}
+	if len(blocks) == 0 {
+		return nil
+	}
+	_DBHandler.Delete(&blocks)
+	return nil
+}
+
+/* METHODS */

@@ -27,3 +27,5 @@ dist-ssr
 data*.json
 *.env
 /*.sql
+**/*.md
+!README.md

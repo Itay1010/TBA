@@ -20,6 +20,8 @@ type DBErrs struct {
 	UnexpectedError error
 	ConnectionError error
 	NotConnected    error
+	UserNotFound    error
+	MissingBlocks   error
 }
 
 var DBE = DBErrs{
@@ -30,4 +32,6 @@ var DBE = DBErrs{
 	UnexpectedError: fmt.Errorf("An unexpected DB error occurred"),
 	ConnectionError: fmt.Errorf("Error connecting to DB"),
 	NotConnected:    fmt.Errorf("DB connection was not initialized"),
+	UserNotFound:    fmt.Errorf("User not found"),
+	MissingBlocks:   fmt.Errorf("No blocks to save for this user"),
 }
