@@ -59,15 +59,15 @@ func InitDB() error {
 		return nil
 	}
 	dsn, err := getDSN()
-	if Check(err) {
+	if err != nil {
 		return err
 	}
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if Check(err) {
+	if err != nil {
 		return err
 	}
 	sqlDb, err := db.DB()
-	if Check(err) {
+	if err != nil {
 		return err
 	}
 
@@ -75,7 +75,7 @@ func InitDB() error {
 	sqlDb.SetMaxOpenConns(10)
 	sqlDb.SetMaxIdleConns(10)
 	err = sqlDb.Ping()
-	if Check(err) {
+	if err != nil {
 		return err
 	}
 	_DBHandler = db
@@ -104,7 +104,7 @@ func getDSN() (string, error) {
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local", username, pass, dbAdd, dbPort, dbName), nil
 }
 
-func valid() error {
+func PingDB() error {
 	if _DBHandler == nil {
 		return DBE.ConnectionError
 	}
@@ -119,9 +119,6 @@ func valid() error {
 }
 
 func GetSchedule(ctx context.Context, uid UserID) (*Schedule, error) {
-	if err := valid(); err != nil {
-		return nil, err
-	}
 	blocks, err := gorm.G[Block](_DBHandler).Where("user_id = ?", (uid)).Find(ctx)
 	if err != nil {
 		return nil, err
@@ -139,9 +136,6 @@ func GetSchedule(ctx context.Context, uid UserID) (*Schedule, error) {
 }
 
 func GetBlocks(ctx context.Context, uid UserID) ([]Block, error) {
-	if err := valid(); err != nil {
-		return nil, err
-	}
 	blocks, err := gorm.G[Block](_DBHandler).Where("user_id = ?", (uid)).Find(ctx)
 	if err != nil {
 		return nil, err
@@ -150,25 +144,22 @@ func GetBlocks(ctx context.Context, uid UserID) ([]Block, error) {
 }
 
 func UpdateBlocks(ctx context.Context, blocks []Block) error {
-	if err := valid(); err != nil {
-		return err
-	}
 	if len(blocks) == 0 {
 		return DBE.MissingBlocks
 	}
-	_DBHandler.Save(&blocks)
-
+	if err := _DBHandler.Save(&blocks).Error; err != nil {
+		return err
+	}
 	return nil
 }
 
 func DeleteBlocks(ctx context.Context, blocks []Block) error {
-	if err := valid(); err != nil {
-		return err
-	}
 	if len(blocks) == 0 {
 		return nil
 	}
-	_DBHandler.Delete(&blocks)
+	if err := _DBHandler.Delete(&blocks).Error; err != nil {
+		return err
+	}
 	return nil
 }
 

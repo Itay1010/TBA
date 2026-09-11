@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,11 +11,11 @@ import (
 	srv "server/services"
 	utl "server/utils"
 	"strings"
+	"time"
 )
 
 func main() {
 	//TODO: Structured responses on success and failure
-
 	loggerFile := srv.WireLogger()
 	if loggerFile == nil {
 		panic(fmt.Errorf("error: Logger cannot be wired for some reason"))
@@ -24,7 +23,7 @@ func main() {
 	defer loggerFile.Close()
 
 	err := srv.LoadEnv()
-	if srv.Check(err) {
+	if err != nil {
 		panic(err)
 	}
 	e := srv.InitDB()
@@ -63,16 +62,13 @@ func main() {
 /* Routes */
 func getSchedule(w http.ResponseWriter, r *http.Request) {
 	//TODO: Auth
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	uid := r.URL.Query().Get("UID")
 	uid = strings.Trim(uid, " ")
 	if uid == "" {
 		http.Error(w, "Error: no user ID.", http.StatusBadRequest)
 		return
 	}
-	sch, err := srv.GetSchedule(ctx, srv.UserID(uid))
+	sch, err := srv.GetSchedule(r.Context(), srv.UserID(uid))
 	if err != nil {
 		http.Error(w, "Error: Could not get schedule.", http.StatusInternalServerError)
 		return
@@ -87,10 +83,8 @@ func getSchedule(w http.ResponseWriter, r *http.Request) {
 
 func saveBlocks(w http.ResponseWriter, r *http.Request) {
 	//TODO: Auth
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
-	var req utl.ScheduleReq
+	var req srv.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusInternalServerError)
 		return
@@ -99,7 +93,7 @@ func saveBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	blocks := req.Blocks
-	err := srv.UpdateBlocks(ctx, blocks)
+	err := srv.UpdateBlocks(r.Context(), blocks)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -108,10 +102,7 @@ func saveBlocks(w http.ResponseWriter, r *http.Request) {
 
 func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	//TODO: Auth
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var req utl.ScheduleReq
+	var req srv.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusInternalServerError)
 		return
@@ -120,7 +111,7 @@ func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	blocks := req.Blocks
-	err := srv.DeleteBlocks(ctx, blocks)
+	err := srv.DeleteBlocks(r.Context(), blocks)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -129,7 +120,9 @@ func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTea(w http.ResponseWriter, r *http.Request) {
-	res, err := http.Get("https://api.thetea.app/api/v2/db_lite")
+	c := &http.Client{Timeout: 10 * time.Second}
+
+	res, err := c.Get("https://api.thetea.app/api/v2/db_lite")
 	if err != nil {
 		http.Error(w, "No teas... Try again later.", http.StatusServiceUnavailable)
 		return

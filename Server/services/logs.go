@@ -8,7 +8,7 @@ import (
 
 func WireLogger() *os.File {
 	file, err := os.OpenFile("error.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if !Check(err) {
+	if err == nil {
 		errMW := io.MultiWriter(os.Stderr, file)
 		log.SetOutput(errMW)
 		log.Default().SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
