@@ -16,7 +16,7 @@ func LoadEnv() error {
 	}
 	PATH += string(filepath.Separator)
 
-	if isDev, err := strconv.ParseBool(os.Getenv("DEV")); isDev && err != nil {
+	if IsDev() {
 		PATH += ".dev.env"
 	} else {
 		PATH += ".env"
@@ -29,13 +29,21 @@ func LoadEnv() error {
 	}
 	s := bufio.NewScanner(f)
 	for s.Scan() {
-		arr := strings.Split(s.Text(), "=")
-
-		os.Setenv(arr[0], arr[1])
+		key, value, found := strings.Cut(s.Text(), "=")
+		if found {
+			os.Setenv(key, value)
+		}
+		fmt.Println("Worning: faild to parse an ENV value.")
 	}
 	if err := s.Err(); err != nil {
 		return fmt.Errorf("%w", err)
 	}
 	return nil
+
+}
+
+func IsDev() bool {
+	isDev, err := strconv.ParseBool(strings.Trim(os.Getenv("DEV"), " "))
+	return isDev && err != nil
 
 }

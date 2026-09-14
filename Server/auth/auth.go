@@ -8,26 +8,18 @@ import (
 	"io"
 	"net/http"
 	srv "server/services"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
 )
 
 type ProviderManager struct {
-	PName    string
-	P        *oauth2.Config
-	Google   *oauth2.Config
-	Facebook *oauth2.Config
-	Github   *oauth2.Config
+	PName string
+	P     *oauth2.Config
 }
 
-// HandleHomeView renders the login screen
-func (PM ProviderManager) HandleHomeView(w http.ResponseWriter, r *http.Request) {
-	html := `<html><body><a href="/login">Log in with %v</a></body></html>`
-	fmt.Fprintf(w, html, PM.PName)
-}
-
-func (PM ProviderManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
+func (PM ProviderManager) Login(w http.ResponseWriter, r *http.Request) {
 	// Generate a random state and store it in a cookie for validation later
 	oauthState := PM.GenerateStateOauthCookie(w)
 
@@ -49,7 +41,7 @@ func (PM ProviderManager) HandleCallback(w http.ResponseWriter, r *http.Request)
 
 	// Extract the authorization code from the URL parameters
 	code := r.FormValue("code")
-	if code == "" {
+	if strings.Trim(code, " ") == "" {
 		http.Error(w, "Code not found", http.StatusBadRequest)
 		return
 	}
@@ -78,11 +70,26 @@ func (PM ProviderManager) HandleCallback(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// In a real application, you would establish a user session here
-	// (e.g., set a secure session cookie or issue a JWT) and save the user to your DB.
+	// Create a secure session ID
+	sessionID := generateSessionID()
 
-	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintf(w, "Authentication successful!\n\nUser Info: %s\n\nAccess Token: %s", userInfo, token.AccessToken)
+	// Save the user data to our "database" attached to this session ID
+	srv.StartSession(sessionID, string(userInfo))
+
+	// Drop a persistent cookie on the user's browser
+	sessionCookie := http.Cookie{
+		Name:     "session_token",
+		Value:    sessionID,
+		Path:     "/",
+		Expires:  time.Now().Add(30 * 24 * time.Hour), // Lasts 30 days for auto-login
+		HttpOnly: true,                                // Crucial: prevents XSS attacks from reading the cookie
+		Secure:   srv.IsDev(),                         // Crucial: set to TRUE in production over HTTPS
+		SameSite: http.SameSiteLaxMode,                // Protects against CSRF attacks
+	}
+	http.SetCookie(w, &sessionCookie)
+
+	// Redirect the user to the protected area of your site
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // GenerateStateOauthCookie creates a random string and stores it in a temporary cookie.
@@ -96,7 +103,7 @@ func (PM ProviderManager) GenerateStateOauthCookie(w http.ResponseWriter) string
 		Value:    state,
 		Expires:  time.Now().Add(10 * time.Minute), // Short lived
 		HttpOnly: true,                             // Prevents JS access
-		Secure:   false,                            // Set to TRUE in production over HTTPS
+		Secure:   srv.IsDev(),                      // Set to TRUE in production over HTTPS
 	}
 	http.SetCookie(w, &cookie)
 
@@ -110,6 +117,7 @@ func generateSessionID() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
+// Route guard for an http mux.
 func AuthGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_token")
@@ -133,8 +141,4 @@ func AuthGuard(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-func HandleLogin(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Sane")
 }

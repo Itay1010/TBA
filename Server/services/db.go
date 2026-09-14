@@ -52,10 +52,10 @@ type Schedule struct { // Maybe embed User struct into Schedule?
 	Blocks *BlockDays `json:"blocks"`
 }
 
-var _DBHandler *gorm.DB
+var dBHandler *gorm.DB
 
 func InitDB() error {
-	if _DBHandler != nil {
+	if dBHandler != nil {
 		return nil
 	}
 	dsn, err := getDSN()
@@ -78,7 +78,7 @@ func InitDB() error {
 	if err != nil {
 		return err
 	}
-	_DBHandler = db
+	dBHandler = db
 	return nil
 }
 
@@ -105,10 +105,10 @@ func getDSN() (string, error) {
 }
 
 func PingDB() error {
-	if _DBHandler == nil {
+	if dBHandler == nil {
 		return DBE.ConnectionError
 	}
-	if db, err := _DBHandler.DB(); err != nil { // Error with GORM ORM
+	if db, err := dBHandler.DB(); err != nil { // Error with GORM ORM
 		return err
 	} else {
 		if err := db.Ping(); err != nil { // DB Error
@@ -119,7 +119,7 @@ func PingDB() error {
 }
 
 func GetSchedule(ctx context.Context, uid UserID) (*Schedule, error) {
-	blocks, err := gorm.G[Block](_DBHandler).Where("user_id = ?", (uid)).Find(ctx)
+	blocks, err := gorm.G[Block](dBHandler).Where("user_id = ?", (uid)).Find(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func GetSchedule(ctx context.Context, uid UserID) (*Schedule, error) {
 }
 
 func GetBlocks(ctx context.Context, uid UserID) ([]Block, error) {
-	blocks, err := gorm.G[Block](_DBHandler).Where("user_id = ?", (uid)).Find(ctx)
+	blocks, err := gorm.G[Block](dBHandler).Where("user_id = ?", (uid)).Find(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func UpdateBlocks(ctx context.Context, blocks []Block) error {
 	if len(blocks) == 0 {
 		return DBE.MissingBlocks
 	}
-	if err := _DBHandler.Save(&blocks).Error; err != nil {
+	if err := dBHandler.Save(&blocks).Error; err != nil {
 		return err
 	}
 	return nil
@@ -157,15 +157,10 @@ func DeleteBlocks(ctx context.Context, blocks []Block) error {
 	if len(blocks) == 0 {
 		return nil
 	}
-	if err := _DBHandler.Delete(&blocks).Error; err != nil {
+	if err := dBHandler.Delete(&blocks).Error; err != nil {
 		return err
 	}
 	return nil
-}
-
-func LoadSession(SID string) bool {
-	//Temoprary
-	return true
 }
 
 /* METHODS */

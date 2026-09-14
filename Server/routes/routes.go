@@ -8,10 +8,16 @@ import (
 	"net/http"
 	"os"
 	"server/auth"
+	"server/models"
 	srv "server/services"
 	utl "server/utils"
 	"strings"
 	"time"
+
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/facebook"
+	"golang.org/x/oauth2/github"
+	"golang.org/x/oauth2/google"
 )
 
 func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
@@ -19,25 +25,29 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 	authMux := http.NewServeMux()
 
 	// API
-	apiMux.HandleFunc("GET /schedule", getSchedule)
-	apiMux.HandleFunc("POST /schedule", saveBlocks)
-	apiMux.HandleFunc("DELETE /schedule", deleteBlocks)
-	apiMux.HandleFunc("GET /tea", getTea)
+	apiMux.HandleFunc("GET /api/schedule", getSchedule)
+	apiMux.HandleFunc("POST /api/schedule", saveBlocks)
+	apiMux.HandleFunc("DELETE /api/schedule", deleteBlocks)
+	apiMux.HandleFunc("GET /api/tea", getTea)
 
 	// Auth
-	authMux.HandleFunc("/login", auth.HandleLogin)
+	authMux.HandleFunc("GET /auth/login", handleLoginPage)
+	authMux.HandleFunc("POST /auth/login", handleLoginAction)
+
+	authMux.HandleFunc("/auth/callback", handleLoginPage)
 
 	// Static assets
 	fh := http.FileServerFS(os.DirFS("./dist/"))
 
 	// Routes
 	mux.Handle("/", fh)
-	mux.Handle("/api/", http.StripPrefix("/api", auth.AuthGuard(apiMux)))
-	mux.Handle("/auth/", http.StripPrefix("/auth", authMux))
+	mux.Handle("/api/", auth.AuthGuard(apiMux))
+	mux.Handle("/auth/", authMux)
 	return mux
 }
 
 /* API */
+
 func getSchedule(w http.ResponseWriter, r *http.Request) {
 	//TODO: Auth
 	uid := r.URL.Query().Get("UID")
@@ -61,7 +71,7 @@ func getSchedule(w http.ResponseWriter, r *http.Request) {
 func saveBlocks(w http.ResponseWriter, r *http.Request) {
 	//TODO: Auth
 
-	var req srv.ScheduleReq
+	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusInternalServerError)
 		return
@@ -69,7 +79,8 @@ func saveBlocks(w http.ResponseWriter, r *http.Request) {
 	if len(req.Blocks) == 0 {
 		return
 	}
-	blocks := req.Blocks
+	blocks := utl.ReqBlocksToDB(srv.UserID(req.UserID), req.Blocks)
+
 	err := srv.UpdateBlocks(r.Context(), blocks)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -78,7 +89,7 @@ func saveBlocks(w http.ResponseWriter, r *http.Request) {
 }
 func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	//TODO: Auth
-	var req srv.ScheduleReq
+	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusInternalServerError)
 		return
@@ -86,7 +97,7 @@ func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	if len(req.Blocks) == 0 {
 		return
 	}
-	blocks := req.Blocks
+	blocks := utl.ReqBlocksToDB(srv.UserID(req.UserID), req.Blocks)
 	err := srv.DeleteBlocks(r.Context(), blocks)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -133,6 +144,48 @@ func getTea(w http.ResponseWriter, r *http.Request) {
 }
 
 /* AUTH */
-func handleLogin(w http.ResponseWriter, r *http.Request) {
+
+func handleLoginPage(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func handleLoginAction(w http.ResponseWriter, r *http.Request) {
+	RedirectURL := "https://localhost:3000/auth/callback"
+	var oauthConfig *oauth2.Config
+	provider := &auth.ProviderManager{}
+	switch r.FormValue("auth_provider") {
+	case "google":
+		oauthConfig = &oauth2.Config{
+			ClientID:     "",
+			ClientSecret: "",
+			RedirectURL:  RedirectURL,
+			Endpoint:     google.Endpoint,
+		}
+		provider.PName = "google"
+	case "facebook":
+		oauthConfig = &oauth2.Config{
+			ClientID:     "",
+			ClientSecret: "",
+			RedirectURL:  RedirectURL,
+			Endpoint:     facebook.Endpoint,
+		}
+		provider.PName = "facebook"
+	case "github":
+		oauthConfig = &oauth2.Config{
+			ClientID:     "",
+			ClientSecret: "",
+			RedirectURL:  RedirectURL,
+			Endpoint:     github.Endpoint,
+		}
+		provider.PName = "github"
+	default:
+		http.Error(w, "Error: OAuth provider not supported. How did you get here?", http.StatusBadRequest)
+		return
+	}
+	provider.P = oauthConfig
+
+}
+
+func handleCallback(w http.ResponseWriter, r *http.Request) {
 
 }

@@ -1,3 +1,4 @@
+// Package models provides the global data models used by multiple packages in this application.
 package models
 
 type RequestBlock struct {
@@ -10,4 +11,9 @@ type RequestBlock struct {
 }
 
 type ResponseBlock struct {
+}
+
+type ScheduleReq struct {
+	UserID string         `json:"user_id"`
+	Blocks []RequestBlock `json:"blocks"`
 }

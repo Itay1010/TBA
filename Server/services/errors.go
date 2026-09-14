@@ -2,16 +2,6 @@ package services
 
 import "fmt"
 
-func Check(e error, rest ...func(error)) bool {
-	if e != nil {
-		if len(rest) > 0 {
-			rest[0](e)
-		}
-		return true
-	}
-	return false
-}
-
 type DBErrs struct {
 	MissingUser     error
 	MissingPass     error
