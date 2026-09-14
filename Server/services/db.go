@@ -163,4 +163,9 @@ func DeleteBlocks(ctx context.Context, blocks []Block) error {
 	return nil
 }
 
+func LoadSession(SID string) bool {
+	//Temoprary
+	return true
+}
+
 /* METHODS */
