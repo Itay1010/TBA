@@ -147,7 +147,7 @@ func AuthGuard(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
 			return
 		}
-		data, exists := srv.LoadSession(cookie.Value)
+		_, exists := srv.LoadSession(cookie.Value)
 		if !exists {
 			// Cookie exists, but it's invalid or expired on the server -> clear it and redirect
 			clearCookie := http.Cookie{

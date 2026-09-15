@@ -6,12 +6,9 @@ import (
 	"strings"
 )
 
-func LoadSession(sessionID string, UID string) (*models.SessionState, bool) {
+func LoadSession(sessionID string) (*models.SessionState, bool) {
 	session := &models.SessionState{ID: sessionID}
 	if err := DBLoadSession(session); err != nil {
-		return nil, false
-	}
-	if UID != session.UserID {
 		return nil, false
 	}
 	return session, true
