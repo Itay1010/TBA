@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"server/models"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -158,6 +160,38 @@ func DeleteBlocks(ctx context.Context, blocks []Block) error {
 		return nil
 	}
 	if err := dBHandler.Delete(&blocks).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func DBLoadSession(res *models.SessionState) error {
+	if res == nil {
+		return fmt.Errorf("No session var pointer.")
+	}
+	stn, stnExists := os.LookupEnv("SessionTableName")
+	if !stnExists {
+		return fmt.Errorf("No session table name in env.")
+	}
+	if err := dBHandler.Table(stn).Where("session_id = ?", res.ID).Take(res).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			res = nil
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func DBStoreSession(res *models.SessionState) error {
+	if res == nil {
+		return fmt.Errorf("No session var pointer.")
+	}
+	stn, stnExists := os.LookupEnv("SessionTableName")
+	if !stnExists {
+		return fmt.Errorf("No session table name in env.")
+	}
+	if err := dBHandler.Table(stn).Save(res).Error; err != nil {
 		return err
 	}
 	return nil

@@ -7,17 +7,12 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"server/auth"
 	"server/models"
 	srv "server/services"
+	"server/services/auth"
 	utl "server/utils"
 	"strings"
 	"time"
-
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/facebook"
-	"golang.org/x/oauth2/github"
-	"golang.org/x/oauth2/google"
 )
 
 func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
@@ -34,7 +29,7 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 	authMux.HandleFunc("GET /auth/login", handleLoginPage)
 	authMux.HandleFunc("POST /auth/login", handleLoginAction)
 
-	authMux.HandleFunc("/auth/callback", handleLoginPage)
+	authMux.HandleFunc("/auth/callback", handleCallback)
 
 	// Static assets
 	fh := http.FileServerFS(os.DirFS("./dist/"))
@@ -49,7 +44,6 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 /* API */
 
 func getSchedule(w http.ResponseWriter, r *http.Request) {
-	//TODO: Auth
 	uid := r.URL.Query().Get("UID")
 	uid = strings.Trim(uid, " ")
 	if uid == "" {
@@ -69,8 +63,6 @@ func getSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func saveBlocks(w http.ResponseWriter, r *http.Request) {
-	//TODO: Auth
-
 	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusInternalServerError)
@@ -88,7 +80,6 @@ func saveBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func deleteBlocks(w http.ResponseWriter, r *http.Request) {
-	//TODO: Auth
 	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusInternalServerError)
@@ -150,42 +141,40 @@ func handleLoginPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLoginAction(w http.ResponseWriter, r *http.Request) {
-	RedirectURL := "https://localhost:3000/auth/callback"
-	var oauthConfig *oauth2.Config
-	provider := &auth.ProviderManager{}
-	switch r.FormValue("auth_provider") {
-	case "google":
-		oauthConfig = &oauth2.Config{
-			ClientID:     "",
-			ClientSecret: "",
-			RedirectURL:  RedirectURL,
-			Endpoint:     google.Endpoint,
-		}
-		provider.PName = "google"
-	case "facebook":
-		oauthConfig = &oauth2.Config{
-			ClientID:     "",
-			ClientSecret: "",
-			RedirectURL:  RedirectURL,
-			Endpoint:     facebook.Endpoint,
-		}
-		provider.PName = "facebook"
-	case "github":
-		oauthConfig = &oauth2.Config{
-			ClientID:     "",
-			ClientSecret: "",
-			RedirectURL:  RedirectURL,
-			Endpoint:     github.Endpoint,
-		}
-		provider.PName = "github"
-	default:
-		http.Error(w, "Error: OAuth provider not supported. How did you get here?", http.StatusBadRequest)
+	providerName := r.FormValue("auth_provider")
+	provider, err := auth.GetOAuthProvider(providerName)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	provider.P = oauthConfig
+	cookie := http.Cookie{
+		Name:     "provider",
+		Value:    provider.ProviderName,
+		Expires:  time.Now().Add(10 * time.Minute),
+		HttpOnly: true,
+		Secure:   !srv.IsDev(), // Set to TRUE in production over HTTPS
+	}
+	http.SetCookie(w, &cookie)
+	provider.Login(w, r)
 
 }
 
 func handleCallback(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("provider")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !cookie.Expires.After(time.Now()) {
+		http.Error(w, "Provider may be wrong", http.StatusInternalServerError)
+		return
+	}
 
+	provider, err := auth.GetOAuthProvider(cookie.Value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	provider.Callback(w, r)
 }
