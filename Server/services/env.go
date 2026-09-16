@@ -32,8 +32,9 @@ func LoadEnv() error {
 		key, value, found := strings.Cut(s.Text(), "=")
 		if found {
 			os.Setenv(key, value)
+		} else {
+			fmt.Printf("Worning: faild to parse an ENV value with key: %v.\n", key)
 		}
-		fmt.Println("Worning: faild to parse an ENV value.")
 	}
 	if err := s.Err(); err != nil {
 		return fmt.Errorf("%w", err)

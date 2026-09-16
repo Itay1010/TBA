@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -22,9 +23,11 @@ type ProviderManager struct {
 	ProviderConfig *oauth2.Config
 }
 
+const UserIDKey string = "userID"
+
 /* METHODS */
 
-func (PM ProviderManager) Login(w http.ResponseWriter, r *http.Request) {
+func (PM *ProviderManager) Login(w http.ResponseWriter, r *http.Request) {
 	// TODO: move redirect logic to "routes.go" handler
 
 	// Generate a random state and store it in a cookie for validation later
@@ -38,7 +41,7 @@ func (PM ProviderManager) Login(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, u, http.StatusTemporaryRedirect)
 }
 
-func (PM ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
+func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	// Validate the state parameter to prevent CSRF attacks
 	oauthStateCookie, err := r.Cookie("oauthstate")
 	if err != nil || r.FormValue("state") != oauthStateCookie.Value {
@@ -70,25 +73,48 @@ func (PM ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 
 	// Use the token to fetch user information (Authentication)
 	// PM.SP.Client automatically attaches the Bearer token to all requests.
-	// client := PM.ProviderConfig.Client(context.Background(), token)
-	// resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
-	// if err != nil {
-	// 	http.Error(w, fmt.Sprintf("Failed to get user info: %s", err.Error()), http.StatusInternalServerError)
-	// 	return
-	// }
-	// defer resp.Body.Close()
+	// TODO: Move this to a function?
+	client := PM.ProviderConfig.Client(context.Background(), token)
+	endpoint := PM.GetUserInfoURL()
+	if endpoint == "" {
+		http.Error(w, "Provider config error", http.StatusInternalServerError)
+		return
+	}
+	resp, err := client.Get(endpoint)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get user info: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, fmt.Errorf("provider returned status %d", resp.StatusCode).Error(), http.StatusInternalServerError)
+		return
+	}
 
-	// userInfo, err := io.ReadAll(resp.Body)
-	// if err != nil {
-	// 	http.Error(w, "Failed to read response body", http.StatusInternalServerError)
-	// 	return
-	// }
+	var rawProfile map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&rawProfile); err != nil {
+		http.Error(w, fmt.Errorf("failed to decode user profile: %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	// Extract the provider's unique ID field ('id' or 'sub')
+	var rawID string
+	if idVal, ok := rawProfile["id"]; ok {
+		rawID = fmt.Sprintf("%v", idVal)
+	} else if subVal, ok := rawProfile["sub"]; ok {
+		rawID = fmt.Sprintf("%v", subVal)
+	}
+	if rawID == "" {
+		http.Error(w, fmt.Errorf("could not find unique account ID in provider profile").Error(), http.StatusInternalServerError)
+		return
+	}
+	// Create composite User ID (e.g., "github:12345678")
+	userID := fmt.Sprintf("%s:%s", PM.ProviderName, rawID)
 
 	// Create a secure session ID
 	sessionID := GenerateSessionID()
 
 	// Save the user data to our "database" attached to this session ID
-	session, err := srv.StartSession(sessionID, idToken.(string))
+	session, err := srv.StoreSession(sessionID, userID)
 
 	if err != nil {
 		http.Error(w, "Unexpected error: missing token field. This is a server error.", http.StatusInternalServerError)
@@ -102,7 +128,7 @@ func (PM ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Expires:  time.Now().Add(30 * 24 * time.Hour), // Lasts 30 days for auto-login
 		HttpOnly: true,                                // Crucial: prevents XSS attacks from reading the cookie
-		Secure:   srv.IsDev(),                         // Crucial: set to TRUE in production over HTTPS
+		Secure:   !srv.IsDev(),                        // Crucial: set to TRUE in production over HTTPS
 		SameSite: http.SameSiteLaxMode,                // Protects against CSRF attacks
 	}
 	http.SetCookie(w, &sessionCookie)
@@ -112,7 +138,7 @@ func (PM ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 }
 
 // GenerateStateOauthCookie creates a random string and stores it in a temporary cookie.
-func (PM ProviderManager) GenerateStateOauthCookie(w http.ResponseWriter) string {
+func (PM *ProviderManager) GenerateStateOauthCookie(w http.ResponseWriter) string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	state := base64.URLEncoding.EncodeToString(b)
@@ -127,6 +153,44 @@ func (PM ProviderManager) GenerateStateOauthCookie(w http.ResponseWriter) string
 	http.SetCookie(w, &cookie)
 
 	return state
+}
+
+func (PM *ProviderManager) Logout(w http.ResponseWriter, r *http.Request) {
+	// Read the cookie to get the session ID
+	cookie, err := r.Cookie("session_token")
+	if err == nil {
+		// Delete the session from our server-side database
+		srv.DBDeleteSession(cookie.Value)
+	}
+
+	// Instruct the browser to delete the cookie
+	clearCookie := http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	}
+	http.SetCookie(w, &clearCookie)
+
+	// Send them back home
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (PM *ProviderManager) GetUserInfoURL() string {
+	var endpoint string
+	switch PM.ProviderName {
+	case "github":
+		endpoint = "https://api.github.com/user"
+	case "google":
+		endpoint = "https://www.googleapis.com/oauth2/v3/userinfo"
+	case "facebook":
+		endpoint = "https://graph.facebook.com/v18.0/me?fields=id,name,email"
+	default:
+		endpoint = ""
+	}
+	return endpoint
+
 }
 
 /* FUNCS */
@@ -147,7 +211,7 @@ func AuthGuard(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
 			return
 		}
-		_, exists := srv.LoadSession(cookie.Value)
+		session, exists := srv.LoadSession(cookie.Value)
 		if !exists {
 			// Cookie exists, but it's invalid or expired on the server -> clear it and redirect
 			clearCookie := http.Cookie{
@@ -160,7 +224,8 @@ func AuthGuard(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
 			return
 		}
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), UserIDKey, session.UserID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

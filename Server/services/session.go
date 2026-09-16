@@ -14,7 +14,7 @@ func LoadSession(sessionID string) (*models.SessionState, bool) {
 	return session, true
 }
 
-func StartSession(sessionID string, UID string) (*models.SessionState, error) {
+func StoreSession(sessionID string, UID string) (*models.SessionState, error) {
 	if strings.Trim(sessionID, " ") == "" {
 		return nil, fmt.Errorf("No session ID provided.")
 	}

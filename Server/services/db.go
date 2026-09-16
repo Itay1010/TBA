@@ -165,17 +165,17 @@ func DeleteBlocks(ctx context.Context, blocks []Block) error {
 	return nil
 }
 
-func DBLoadSession(res *models.SessionState) error {
-	if res == nil {
+func DBLoadSession(session *models.SessionState) error {
+	if session == nil {
 		return fmt.Errorf("No session var pointer.")
 	}
 	stn, stnExists := os.LookupEnv("SessionTableName")
 	if !stnExists {
 		return fmt.Errorf("No session table name in env.")
 	}
-	if err := dBHandler.Table(stn).Where("session_id = ?", res.ID).Take(res).Error; err != nil {
+	if err := dBHandler.Table(stn).Where("ID = ?", session.ID).Take(session).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			res = nil
+			session = nil
 			return nil
 		}
 		return err
@@ -197,4 +197,13 @@ func DBStoreSession(res *models.SessionState) error {
 	return nil
 }
 
-/* METHODS */
+func DBDeleteSession(sessionID string) error {
+	stn, stnExists := os.LookupEnv("SessionTableName")
+	if !stnExists {
+		return fmt.Errorf("No session table name in env.")
+	}
+	if err := dBHandler.Table(stn).Where("ID = ?", sessionID).Delete(&models.SessionState{ID: sessionID}).Error; err != nil {
+		return err
+	}
+	return nil
+}

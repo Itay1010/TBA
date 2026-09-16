@@ -11,7 +11,6 @@ import (
 	srv "server/services"
 	"server/services/auth"
 	utl "server/utils"
-	"strings"
 	"time"
 )
 
@@ -28,6 +27,7 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 	// Auth
 	authMux.HandleFunc("GET /auth/login", handleLoginPage)
 	authMux.HandleFunc("POST /auth/login", handleLoginAction)
+	authMux.HandleFunc("POST /auth/logout", handleLogout)
 
 	authMux.HandleFunc("/auth/callback", handleCallback)
 
@@ -44,28 +44,23 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 /* API */
 
 func getSchedule(w http.ResponseWriter, r *http.Request) {
-	uid := r.URL.Query().Get("UID")
-	uid = strings.Trim(uid, " ")
-	if uid == "" {
-		http.Error(w, "Error: no user ID.", http.StatusBadRequest)
+	userID, ok := r.Context().Value(auth.UserIDKey).(string)
+	if !ok || userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	sch, err := srv.GetSchedule(r.Context(), srv.UserID(uid))
+	sch, err := srv.GetSchedule(r.Context(), srv.UserID(userID))
 	if err != nil {
-		http.Error(w, "Error: Could not get schedule.", http.StatusInternalServerError)
+		http.Error(w, "Could not retrieve schedule", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", utl.HttpContentJSON)
-	if err := json.NewEncoder(w).Encode(sch); err != nil {
-		// fmt.Printf("Server error: %v\n", err)
-		http.Error(w, "Error: Could not parse response.\n", http.StatusInternalServerError)
-		return
-	}
+	_ = json.NewEncoder(w).Encode(sch)
 }
 func saveBlocks(w http.ResponseWriter, r *http.Request) {
 	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusBadRequest)
 		return
 	}
 	if len(req.Blocks) == 0 {
@@ -82,7 +77,7 @@ func saveBlocks(w http.ResponseWriter, r *http.Request) {
 func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusBadRequest)
 		return
 	}
 	if len(req.Blocks) == 0 {
@@ -104,6 +99,7 @@ func getTea(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No teas... Try again later.", http.StatusServiceUnavailable)
 		return
 	}
+	defer res.Body.Close()
 	teaOptions := struct {
 		Meta map[string]any
 		Teas []map[string]any
@@ -119,7 +115,7 @@ func getTea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err = http.Get(fmt.Sprintf("https://api.thetea.app/api/v2/tea/%s.md", teaSlug))
+	res, err = c.Get(fmt.Sprintf("https://api.thetea.app/api/v2/tea/%s.md", teaSlug))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
@@ -143,7 +139,6 @@ func handleLoginPage(w http.ResponseWriter, r *http.Request) {
 func handleLoginAction(w http.ResponseWriter, r *http.Request) {
 	providerName := r.FormValue("auth_provider")
 	provider, err := auth.GetOAuthProvider(providerName)
-
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -166,10 +161,6 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if !cookie.Expires.After(time.Now()) {
-		http.Error(w, "Provider may be wrong", http.StatusInternalServerError)
-		return
-	}
 
 	provider, err := auth.GetOAuthProvider(cookie.Value)
 	if err != nil {
@@ -177,4 +168,18 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	provider.Callback(w, r)
+}
+
+func handleLogout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_token")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	session := &models.SessionState{ID: cookie.Value}
+	if err := srv.DBLoadSession(session); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 }
