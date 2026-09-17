@@ -25,7 +25,6 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 	apiMux.HandleFunc("GET /api/tea", getTea)
 
 	// Auth
-	authMux.HandleFunc("GET /auth/login", handleLoginPage)
 	authMux.HandleFunc("POST /auth/login", handleLoginAction)
 	authMux.HandleFunc("POST /auth/logout", handleLogout)
 
@@ -49,7 +48,7 @@ func getSchedule(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	sch, err := srv.GetSchedule(r.Context(), srv.UserID(userID))
+	sch, err := srv.GetSchedule(r.Context(), models.UserID(userID))
 	if err != nil {
 		http.Error(w, "Could not retrieve schedule", http.StatusInternalServerError)
 		return
@@ -66,7 +65,7 @@ func saveBlocks(w http.ResponseWriter, r *http.Request) {
 	if len(req.Blocks) == 0 {
 		return
 	}
-	blocks := utl.ReqBlocksToDB(srv.UserID(req.UserID), req.Blocks)
+	blocks := utl.ReqBlocksToDB(models.UserID(req.UserID), req.Blocks)
 
 	err := srv.UpdateBlocks(r.Context(), blocks)
 	if err != nil {
@@ -83,7 +82,7 @@ func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	if len(req.Blocks) == 0 {
 		return
 	}
-	blocks := utl.ReqBlocksToDB(srv.UserID(req.UserID), req.Blocks)
+	blocks := utl.ReqBlocksToDB(models.UserID(req.UserID), req.Blocks)
 	err := srv.DeleteBlocks(r.Context(), blocks)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -131,10 +130,6 @@ func getTea(w http.ResponseWriter, r *http.Request) {
 }
 
 /* AUTH */
-
-func handleLoginPage(w http.ResponseWriter, r *http.Request) {
-
-}
 
 func handleLoginAction(w http.ResponseWriter, r *http.Request) {
 	providerName := r.FormValue("auth_provider")

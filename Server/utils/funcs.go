@@ -2,22 +2,21 @@ package utils
 
 import (
 	"server/models"
-	srv "server/services"
 )
 
-func ReqBlocksToDB(uid srv.UserID, blocks []models.RequestBlock) []srv.Block {
+func ReqBlocksToDB(uid models.UserID, blocks []models.RequestBlock) []models.Block {
 	// Maybe Change the API so we get the blocks formatted, as this loop is potentially very heavy.
 	if len(blocks) == 0 {
-		return []srv.Block{}
+		return []models.Block{}
 	}
 
-	var resBlocks []srv.Block
+	var resBlocks []models.Block
 
 	for _, block := range blocks {
-		dbBlock := srv.Block{
-			BlockID:   srv.BlockID(block.ID),
-			UserID:    srv.UserID(uid),
-			Day:       srv.Day(block.Day),
+		dbBlock := models.Block{
+			BlockID:   models.BlockID(block.ID),
+			UserID:    models.UserID(uid),
+			Day:       models.Day(block.Day),
 			Title:     block.Title,
 			Color:     block.Color,
 			StartTime: block.StartTime,
