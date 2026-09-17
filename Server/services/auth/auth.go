@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"server/models"
 	srv "server/services"
 	"strings"
 	"time"
@@ -110,14 +111,36 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	// Create composite User ID (e.g., "github:12345678")
 	userID := fmt.Sprintf("%s:%s", PM.ProviderName, rawID)
 
+	// Extract profile details
+	var email, name, avatarURL string
+	if e, ok := rawProfile["email"].(string); ok {
+		email = e
+	}
+	if n, ok := rawProfile["name"].(string); ok {
+		name = n
+	}
+	if a, ok := rawProfile["avatar_url"].(string); ok {
+		avatarURL = a
+	} else if a, ok := rawProfile["picture"].(string); ok {
+		avatarURL = a
+	}
+
+	// Upsert User record
+	userObj := &models.User{
+		UserID:    models.UserID(userID),
+		Email:     email,
+		Name:      name,
+		AvatarURL: avatarURL,
+	}
+	_ = srv.UpsertUser(r.Context(), userObj)
+
 	// Create a secure session ID
 	sessionID := GenerateSessionID()
 
-	// Save the user data to our "database" attached to this session ID
-	session, err := srv.StoreSession(sessionID, userID)
-
+	// Store full session with OAuth tokens in DB
+	session, err := srv.CreateSession(r.Context(), sessionID, models.UserID(userID), PM.ProviderName, token)
 	if err != nil {
-		http.Error(w, "Unexpected error: missing token field. This is a server error.", http.StatusInternalServerError)
+		http.Error(w, "Failed to store session", http.StatusInternalServerError)
 		return
 	}
 
@@ -126,10 +149,10 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 		Name:     "session_token",
 		Value:    session.ID,
 		Path:     "/",
-		Expires:  time.Now().Add(30 * 24 * time.Hour), // Lasts 30 days for auto-login
-		HttpOnly: true,                                // Crucial: prevents XSS attacks from reading the cookie
-		Secure:   !srv.IsDev(),                        // Crucial: set to TRUE in production over HTTPS
-		SameSite: http.SameSiteLaxMode,                // Protects against CSRF attacks
+		Expires:  session.ExpiresAt,
+		HttpOnly: true,                 // Crucial: prevents XSS attacks from reading the cookie
+		Secure:   !srv.IsDev(),         // Crucial: set to TRUE in production over HTTPS
+		SameSite: http.SameSiteLaxMode, // Protects against CSRF attacks
 	}
 	http.SetCookie(w, &sessionCookie)
 
@@ -158,9 +181,9 @@ func (PM *ProviderManager) GenerateStateOauthCookie(w http.ResponseWriter) strin
 func (PM *ProviderManager) Logout(w http.ResponseWriter, r *http.Request) {
 	// Read the cookie to get the session ID
 	cookie, err := r.Cookie("session_token")
-	if err == nil {
+	if err == nil && cookie.Value != "" {
 		// Delete the session from our server-side database
-		srv.DBDeleteSession(cookie.Value)
+		_ = srv.InvalidateSession(r.Context(), cookie.Value)
 	}
 
 	// Instruct the browser to delete the cookie
@@ -190,7 +213,6 @@ func (PM *ProviderManager) GetUserInfoURL() string {
 		endpoint = ""
 	}
 	return endpoint
-
 }
 
 /* FUNCS */
@@ -202,29 +224,57 @@ func GenerateSessionID() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-// Route guard for an http mux.
+// Route guard for an http mux with sliding window session renewal.
 func AuthGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_token")
-		if err != nil {
-			// No cookie found -> not logged in.
-			http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
+		if err != nil || cookie.Value == "" {
+			// No cookie found -> unauthorized/redirect
+			if strings.HasPrefix(r.URL.Path, "/api/") {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			} else {
+				http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
+			}
 			return
 		}
-		session, exists := srv.LoadSession(cookie.Value)
+
+		session, exists := srv.LoadSession(r.Context(), cookie.Value)
 		if !exists {
-			// Cookie exists, but it's invalid or expired on the server -> clear it and redirect
+			// Cookie exists, but it's invalid or expired on the server -> clear it and redirect/unauthorize
 			clearCookie := http.Cookie{
-				Name:   "session_token",
-				Value:  "",
-				Path:   "/",
-				MaxAge: -1,
+				Name:     "session_token",
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
 			}
 			http.SetCookie(w, &clearCookie)
-			http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
+			if strings.HasPrefix(r.URL.Path, "/api/") {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			} else {
+				http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
+			}
 			return
 		}
-		ctx := context.WithValue(r.Context(), UserIDKey, session.UserID)
+
+		// Active sliding window expiration check: extend if less than 15 days remain
+		if time.Until(session.ExpiresAt) < srv.SlidingWindowThreshold {
+			if err := srv.ExtendSession(r.Context(), session); err == nil {
+				sessionCookie := http.Cookie{
+					Name:     "session_token",
+					Value:    session.ID,
+					Path:     "/",
+					Expires:  session.ExpiresAt,
+					HttpOnly: true,
+					Secure:   !srv.IsDev(),
+					SameSite: http.SameSiteLaxMode,
+				}
+				http.SetCookie(w, &sessionCookie)
+			}
+		}
+
+		ctx := context.WithValue(r.Context(), UserIDKey, string(session.UserID))
+		ctx = context.WithValue(ctx, "session", session)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

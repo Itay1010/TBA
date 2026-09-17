@@ -25,7 +25,7 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 	apiMux.HandleFunc("GET /api/tea", getTea)
 
 	// Auth
-	authMux.HandleFunc("POST /auth/login", handleLoginAction)
+	authMux.HandleFunc("POST /auth/login", handleLogin)
 	authMux.HandleFunc("POST /auth/logout", handleLogout)
 
 	authMux.HandleFunc("/auth/callback", handleCallback)
@@ -131,7 +131,7 @@ func getTea(w http.ResponseWriter, r *http.Request) {
 
 /* AUTH */
 
-func handleLoginAction(w http.ResponseWriter, r *http.Request) {
+func handleLogin(w http.ResponseWriter, r *http.Request) {
 	providerName := r.FormValue("auth_provider")
 	provider, err := auth.GetOAuthProvider(providerName)
 	if err != nil {
@@ -167,14 +167,18 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 
 func handleLogout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_token")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	session := &models.SessionState{ID: cookie.Value}
-	if err := srv.DBLoadSession(session); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err == nil && cookie.Value != "" {
+		_ = srv.InvalidateSession(r.Context(), cookie.Value)
 	}
 
+	clearCookie := http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   !srv.IsDev(),
+	}
+	http.SetCookie(w, &clearCookie)
+	w.WriteHeader(http.StatusOK)
 }
