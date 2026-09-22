@@ -97,40 +97,12 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Errorf("failed to decode user profile: %w", err).Error(), http.StatusInternalServerError)
 		return
 	}
-	// Extract the provider's unique ID field ('id' or 'sub')
-	var rawID string
-	if idVal, ok := rawProfile["id"]; ok {
-		rawID = fmt.Sprintf("%v", idVal)
-	} else if subVal, ok := rawProfile["sub"]; ok {
-		rawID = fmt.Sprintf("%v", subVal)
-	}
-	if rawID == "" {
-		http.Error(w, fmt.Errorf("could not find unique account ID in provider profile").Error(), http.StatusInternalServerError)
-		return
-	}
-	// Create composite User ID (e.g., "github:12345678")
-	userID := fmt.Sprintf("%s:%s", PM.ProviderName, rawID)
-
-	// Extract profile details
-	var email, name, avatarURL string
-	if e, ok := rawProfile["email"].(string); ok {
-		email = e
-	}
-	if n, ok := rawProfile["name"].(string); ok {
-		name = n
-	}
-	if a, ok := rawProfile["avatar_url"].(string); ok {
-		avatarURL = a
-	} else if a, ok := rawProfile["picture"].(string); ok {
-		avatarURL = a
-	}
 
 	// Upsert User record
-	userObj := &models.User{
-		UserID:    models.UserID(userID),
-		Email:     email,
-		Name:      name,
-		AvatarURL: avatarURL,
+	userObj, err := getUserFromRawProfile(rawProfile, PM.ProviderName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	_ = srv.UpsertUser(r.Context(), userObj)
 
@@ -138,7 +110,7 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	sessionID := GenerateSessionID()
 
 	// Store full session with OAuth tokens in DB
-	session, err := srv.CreateSession(r.Context(), sessionID, models.UserID(userID), PM.ProviderName, token)
+	session, err := srv.CreateSession(r.Context(), sessionID, userObj.UserID, PM.ProviderName, token)
 	if err != nil {
 		http.Error(w, "Failed to store session", http.StatusInternalServerError)
 		return
@@ -233,7 +205,7 @@ func AuthGuard(next http.Handler) http.Handler {
 			if strings.HasPrefix(r.URL.Path, "/api/") {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			} else {
-				http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
+				http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			}
 			return
 		}
@@ -252,7 +224,7 @@ func AuthGuard(next http.Handler) http.Handler {
 			if strings.HasPrefix(r.URL.Path, "/api/") {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			} else {
-				http.Redirect(w, r, "/auth/login", http.StatusTemporaryRedirect)
+				http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			}
 			return
 		}
@@ -341,4 +313,44 @@ func GetOAuthProvider(name string) (*ProviderManager, error) {
 	provider.ProviderConfig = oauthConfig
 	return &provider, nil
 
+}
+
+func getUserFromRawProfile(rawProfile map[string]any, providerName string) (*models.User, error) {
+	// Extract the provider's unique ID field ('id' or 'sub')
+	var rawID string
+	if idVal, ok := rawProfile["id"]; ok {
+		rawID = fmt.Sprintf("%v", idVal)
+	} else if subVal, ok := rawProfile["sub"]; ok {
+		rawID = fmt.Sprintf("%v", subVal)
+	} else {
+		rawID = ""
+	}
+	if rawID == "" {
+		return nil, fmt.Errorf("could not find unique account ID in provider profile")
+	}
+	// Create composite User ID (e.g., "github:12345678")
+	userID := fmt.Sprintf("%s:%s", providerName, rawID)
+
+	// Extract profile details
+	var email, name, avatarURL string
+	if e, ok := rawProfile["email"].(string); ok {
+		email = e
+	}
+	if n, ok := rawProfile["name"].(string); ok {
+		name = n
+	}
+	if a, ok := rawProfile["avatar_url"].(string); ok {
+		avatarURL = a
+	} else if a, ok := rawProfile["picture"].(string); ok {
+		avatarURL = a
+	}
+
+	// Upsert User record
+	userObj := &models.User{
+		UserID:    models.UserID(userID),
+		Email:     email,
+		Name:      name,
+		AvatarURL: avatarURL,
+	}
+	return userObj, nil
 }
