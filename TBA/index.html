@@ -20,10 +20,7 @@
 </body>
 
 <script>
-  // Conditional Service Worker Registration: Only attempt registration if not in development
   if ('serviceWorker' in navigator) {
-    // We check for a specific flag or environment variable if available, 
-    // but for basic Vite/SPA dev mode, we check if we are running from a development origin
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js', { type: "module" })
         .then(registration => {

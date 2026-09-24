@@ -1,7 +1,9 @@
 import React from 'react';
 import { CalendarDays, Plus, Save } from 'lucide-react';
+import { useNotification } from '../contexts/NotificationContext';
 
 export default function Header({ onAddBlock, onSaveSchedule }) {
+  const { Notify } = useNotification()
   return (
     <header className="app-header">
       <div className="header-title-group">

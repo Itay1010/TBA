@@ -1,14 +1,16 @@
 type Days = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
 
 type Block = {
-    "id": string,
-    "title": string,
-    "startTime": string,
-    "endTime": string,
-    "day": string,
-    "color": string
+    block_id: string,
+    user_id: string,
+    day: string,
+    title: string,
+    color: string,
+    start_time: string,
+    end_time: string,
 }
 
 type Schedule = {
-    [K in Days]: Block[]
+    user_id: string,
+    blocks: { [K in Days]: Block[] }
 };

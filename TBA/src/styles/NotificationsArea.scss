@@ -1,0 +1,46 @@
+.notifications-area {
+    background-color: transparent;
+    border: 10px red; // Remove after feature is done
+    right: 0;
+    bottom: 0;
+    position: absolute;
+    z-index: 100;
+    padding: 30px 16px;
+    transition: all 0.4s;
+
+    .notification-popup {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        color: var(--text-main);
+        background-color: rgba(var(--bg-surface), 0.5);
+        border: 1px solid var(--border-medium);
+        border-radius: 15px;
+        padding: 10px 40px;
+        max-width: 400px;
+        text-align: start;
+        backdrop-filter: blur(5px);
+        animation: popupIn 0.4s forwards;
+        overflow: hidden;
+
+        .icon-container {
+            position: absolute;
+            right: 10px;
+            top: 10;
+        }
+    }
+}
+
+@keyframes popupIn {
+    0% {
+        opacity: 0;
+        transform: translateX(10px);
+        max-height: 0;
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0px);
+        max-height: 300px; // A max-height greater than the popup height
+    }
+}

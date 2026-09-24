@@ -6,7 +6,7 @@ import { DAYS_OF_WEEK, LOCAL_STORAGE_KEY } from './constants/calendar';
 import { generateId, timeToMinutes, minutesToTimeStr } from './utils/timeUtils';
 import Header from './components/Header';
 import CalendarGrid from './components/CalendarGrid/CalendarGrid';
-import BlockModal from './components/Modal/BlockModal';
+import BlockModal from './components/BlockModal/BlockModal';
 
 export default function App() {
   const scrollContainerRef = useRef(null);
