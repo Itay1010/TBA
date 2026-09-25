@@ -21,7 +21,7 @@ export default function BlockModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" dir="rtl">
+      <div className="modal-content" dir="rtl" onClick={ev => ev.stopPropagation()}>
         <div className="modal-header">
           <h3>{isEditing ? 'עריכת בלוק' : 'בלוק חדש'}</h3>
           <button onClick={onClose} className="btn-close">
@@ -57,22 +57,10 @@ export default function BlockModal({
             ))}
             <button
               type="button"
+              className="btn-add-slot"
               onClick={onAddSlot}
-              style={{
-                background: 'none',
-                border: '1px dashed #3b82f6',
-                color: '#3b82f6',
-                padding: '10px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 500
-              }}
             >
-              <Plus
-                size={16}
-                style={{ display: 'inline', verticalAlign: 'middle', marginLeft: '5px' }}
-              />{' '}
-              הוסף זמנים נוספים
+              <Plus size={16} /> הוסף זמנים נוספים
             </button>
           </div>
         </div>

@@ -21,7 +21,7 @@
   z-index: 40;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-light);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(44, 34, 30, 0.04);
 
   .corner-block {
     width: 64px;
@@ -37,13 +37,13 @@
     flex: 1;
     min-width: 100px;
     border-left: 1px solid var(--border-light);
-    padding: 8px 0;
+    padding: 10px 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background-color: var(--bg-surface-blur);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
     position: relative;
     z-index: 40;
 
@@ -51,18 +51,20 @@
       font-size: 0.9375rem;
       font-weight: 700;
       color: var(--text-main);
+      letter-spacing: -0.01em;
 
       &.is-today {
         background-color: var(--primary);
-        color: white;
-        padding: 2px 12px;
+        color: #ffffff;
+        padding: 3px 14px;
         border-radius: 9999px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 4px rgba(200, 90, 50, 0.25);
+        font-weight: 700;
       }
     }
 
     @media (min-width: 640px) {
-      padding: 12px 0;
+      padding: 14px 0;
     }
   }
 }
@@ -77,7 +79,7 @@
     flex-shrink: 0;
     border-left: 1px solid var(--border-light);
     background-color: var(--bg-surface-blur);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
     position: sticky;
     right: 0;
     z-index: 30;
@@ -90,12 +92,17 @@
 
       span {
         position: absolute;
-        left: 8px;
         font-size: 0.6875rem;
-        font-weight: 500;
+        font-weight: 600;
         color: var(--text-muted);
         background-color: var(--bg-surface);
-        padding: 0 4px;
+        padding: 1px 5px;
+        border-radius: 4px;
+        border: 1px solid var(--border-light);
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, 50%);
+
         &:not(:first-child) {
           top: -10px;
         }
@@ -129,12 +136,13 @@
       border-left: 1px solid var(--border-medium);
       position: relative;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: background-color 0.2s ease;
       z-index: 10;
 
       &:hover {
-        background-color: rgba(156, 163, 175, 0.05);
+        background-color: rgba(200, 180, 160, 0.08);
       }
+
       &.is-today {
         background-color: var(--today-bg);
       }
@@ -153,6 +161,7 @@
   left: -5px;
   transform: translateY(-50%);
   transition: top 1s linear;
+  box-shadow: 0 0 4px rgba(200, 90, 50, 0.5);
 }
 
 .current-time-line {
@@ -162,8 +171,9 @@
   border-top: 2px solid var(--current-time);
   z-index: 30;
   pointer-events: none;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 6px rgba(200, 90, 50, 0.35);
   transition: top 1s linear;
+  transform: translateY(-50%);
 }
 
 /* Time Blocks */
@@ -171,16 +181,9 @@
   position: absolute;
   left: 4px;
   right: 4px;
-  border-radius: 6px;
-  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  border: 1px dashed var(--border-light);
   background-color: var(--unallotted-bg);
-  background-image: repeating-linear-gradient(
-    -45deg,
-    transparent,
-    transparent 6px,
-    var(--unallotted-stripe) 6px,
-    var(--unallotted-stripe) 12px
-  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -195,7 +198,8 @@
     background-color: var(--unallotted-badge-bg);
     padding: 2px 8px;
     border-radius: 6px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 2px rgba(44, 34, 30, 0.06);
+    border: 1px solid var(--border-light);
   }
 }
 
@@ -203,39 +207,42 @@
   position: absolute;
   left: 4px;
   right: 4px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid var(--t-border);
   background-color: var(--t-bg);
   color: var(--t-text);
-  padding: 6px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition:
-    transform 0.2s,
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
     z-index 0s;
   cursor: pointer;
   z-index: 10;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 5px rgba(44, 34, 30, 0.06);
 
   &:hover {
-    transform: scale(1.02);
+    transform: translateY(-1px) scale(1.01);
     z-index: 20;
+    box-shadow: 0 4px 10px rgba(44, 34, 30, 0.12);
   }
 
   .block-title {
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.78125rem;
+    font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1;
+    line-height: 1.2;
   }
+
   .block-time {
-    font-size: 0.625rem;
-    font-weight: 500;
-    opacity: 0.75;
-    margin-top: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    opacity: 0.8;
+    margin-top: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

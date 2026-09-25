@@ -1,32 +1,31 @@
 :root {
-  --bg-app: #ffffff;
-  --bg-grid: rgba(249, 250, 251, 0.5);
-  --bg-surface: #ffffff;
-  --bg-surface-blur: rgba(255, 255, 255, 0.9);
-  --text-main: #111827;
-  --text-muted: #6b7280;
-  --border-light: #e5e7eb;
-  --border-medium: rgba(229, 231, 235, 0.5);
+  --bg-app: #FBF8F3;
+  --bg-grid: #F4EFE6;
+  --bg-surface: #FFFDF9;
+  --bg-surface-blur: rgba(255, 253, 249, 0.92);
+  --text-main: #2C221E;
+  --text-muted: #6E5E54;
+  --border-light: #E5DCD0;
+  --border-medium: rgba(216, 204, 192, 0.7);
 
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-light: #e0e7ff;
+  --primary: #C85A32;
+  --primary-hover: #B24E2A;
+  --primary-light: #F6EAE4;
 
-  --danger: #dc2626;
-  --danger-light: #fef2f2;
+  --danger: #B83A2E;
+  --danger-light: #FAF0EE;
 
-  --current-time: #ef4444;
+  --current-time: #C85A32;
 
-  --unallotted-bg: rgba(229, 231, 235, 0.4);
-  --unallotted-stripe: rgba(150, 150, 150, 0.08);
-  --unallotted-badge-bg: rgba(229, 231, 235, 0.9);
+  --unallotted-bg: rgba(140, 115, 90, 0.3);
+  --unallotted-badge-bg: #EAE2D7;
 
-  --today-bg: rgba(238, 242, 255, 0.4);
+  --today-bg: rgba(200, 90, 50, 0.05);
 
-  font: 18px/145% var(--sans);
+  font: 18px/145% system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  color: var(--text-main);
+  background: var(--bg-app);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -39,97 +38,99 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-app: #09090b;
-    --bg-grid: rgba(24, 24, 27, 0.3);
-    --bg-surface: #18181b;
-    --bg-surface-blur: rgba(9, 9, 11, 0.9);
-    --text-main: #f9fafb;
-    --text-muted: #9ca3af;
-    --border-light: #27272a;
-    --border-medium: rgba(39, 39, 42, 0.5);
+    --bg-app: #1C1815;
+    --bg-grid: rgba(35, 29, 25, 0.6);
+    --bg-surface: #27211D;
+    --bg-surface-blur: rgba(39, 33, 29, 0.92);
+    --text-main: #EFE6DD;
+    --text-muted: #A3968B;
+    --border-light: #3D332B;
+    --border-medium: rgba(61, 51, 43, 0.6);
 
-    --primary: #4f46e5;
-    --primary-hover: #4338ca;
-    --primary-light: rgba(49, 46, 129, 0.3);
+    --primary: #D96B43;
+    --primary-hover: #C85A32;
+    --primary-light: rgba(217, 107, 67, 0.2);
 
-    --danger: #ef4444;
-    --danger-light: rgba(239, 68, 68, 0.1);
+    --danger: #E05244;
+    --danger-light: rgba(224, 82, 68, 0.15);
 
-    --unallotted-bg: rgba(39, 39, 42, 0.3);
-    --unallotted-badge-bg: rgba(39, 39, 42, 0.9);
+    --current-time: #E05244;
 
-    --today-bg: rgba(49, 46, 129, 0.1);
+    --unallotted-bg: rgba(61, 51, 43, 0.4);
+    --unallotted-badge-bg: #382F27;
+
+    --today-bg: rgba(217, 107, 67, 0.08);
   }
 }
 
-/* Theme Colors */
+/* Organic Rustic Theme Color Presets */
 .theme-blue {
-  --t-bg: rgba(219, 234, 254, 0.9);
-  --t-border: #93c5fd;
-  --t-text: #1e3a8a;
-  --t-dot: #3b82f6;
+  --t-bg: #D4E2EE;
+  --t-border: #8BA8C2;
+  --t-text: #1E384D;
+  --t-dot: #4A6B82;
 }
 .theme-green {
-  --t-bg: rgba(220, 252, 231, 0.9);
-  --t-border: #86efac;
-  --t-text: #166534;
-  --t-dot: #22c55e;
+  --t-bg: #D8E7DD;
+  --t-border: #9BB8A4;
+  --t-text: #23452E;
+  --t-dot: #5B8266;
 }
 .theme-purple {
-  --t-bg: rgba(243, 232, 255, 0.9);
-  --t-border: #d8b4fe;
-  --t-text: #581c87;
-  --t-dot: #a855f7;
+  --t-bg: #E4D5E0;
+  --t-border: #BA9BB2;
+  --t-text: #45233D;
+  --t-dot: #8B5A75;
 }
 .theme-orange {
-  --t-bg: rgba(255, 237, 213, 0.9);
-  --t-border: #fdba74;
-  --t-text: #9a3412;
-  --t-dot: #f97316;
+  --t-bg: #F5E2D6;
+  --t-border: #E8AB90;
+  --t-text: #632B15;
+  --t-dot: #C85A32;
 }
 .theme-rose {
-  --t-bg: rgba(255, 228, 230, 0.9);
-  --t-border: #fda4af;
-  --t-text: #9f1239;
-  --t-dot: #f43f5e;
+  --t-bg: #F3D9E0;
+  --t-border: #DAA2B1;
+  --t-text: #592332;
+  --t-dot: #B85C6C;
 }
 .theme-gray {
-  --t-bg: rgba(229, 231, 235, 0.9);
-  --t-border: #9ca3af;
-  --t-text: #111827;
-  --t-dot: #6b7280;
+  --t-bg: #E0D9D2;
+  --t-border: #B3AAA1;
+  --t-text: #36322E;
+  --t-dot: #8C7E75;
 }
 
 @media (prefers-color-scheme: dark) {
   .theme-blue {
-    --t-bg: rgba(30, 58, 138, 0.5);
-    --t-border: #1d4ed8;
-    --t-text: #dbeafe;
+    --t-bg: rgba(74, 107, 130, 0.48);
+    --t-border: #4A6B82;
+    --t-text: #D5E3EE;
   }
   .theme-green {
-    --t-bg: rgba(20, 83, 45, 0.5);
-    --t-border: #15803d;
-    --t-text: #dcfce7;
+    --t-bg: rgba(91, 130, 102, 0.48);
+    --t-border: #5B8266;
+    --t-text: #D6E8DC;
   }
   .theme-purple {
-    --t-bg: rgba(88, 28, 135, 0.5);
-    --t-border: #7e22ce;
-    --t-text: #f3e8ff;
+    --t-bg: rgba(139, 90, 117, 0.48);
+    --t-border: #8B5A75;
+    --t-text: #F0DEE9;
   }
   .theme-orange {
-    --t-bg: rgba(124, 45, 18, 0.5);
-    --t-border: #c2410c;
-    --t-text: #ffedd5;
+    --t-bg: rgba(200, 90, 50, 0.48);
+    --t-border: #C85A32;
+    --t-text: #FBE5DC;
   }
   .theme-rose {
-    --t-bg: rgba(136, 19, 55, 0.5);
-    --t-border: #be123c;
-    --t-text: #ffe4e6;
+    --t-bg: rgba(184, 92, 108, 0.48);
+    --t-border: #B85C6C;
+    --t-text: #F9E0E6;
   }
   .theme-gray {
-    --t-bg: rgba(39, 39, 42, 0.8);
-    --t-border: #52525b;
-    --t-text: #f3f4f6;
+    --t-bg: rgba(140, 126, 117, 0.48);
+    --t-border: #8C7E75;
+    --t-text: #ECE7E3;
   }
 }
 
@@ -141,10 +142,9 @@
 }
 body {
   overflow: hidden;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
 }
 button {
   cursor: pointer;
@@ -158,11 +158,10 @@ select {
 }
 
 #root {
-  // width: 1126px;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
+  border-inline: 1px solid var(--border-light);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -170,10 +169,11 @@ select {
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h2,
+h3 {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 h1 {
@@ -198,15 +198,15 @@ p {
 
 code,
 .counter {
-  font-family: var(--mono);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
+  color: var(--text-main);
 }
 
 code {
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;
-  background: var(--code-bg);
+  background: var(--bg-grid);
 }

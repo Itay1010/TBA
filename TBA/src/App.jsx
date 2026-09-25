@@ -329,7 +329,7 @@ export default function App() {
     closeModal();
   };
 
-  const today = new Date().toLocaleDateString('he-IL', { weekday: 'long' });
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
   const handleLogin = async (provider) => {
     try {

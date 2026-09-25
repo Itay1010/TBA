@@ -1,6 +1,5 @@
 .notifications-area {
     background-color: transparent;
-    border: 10px red; // Remove after feature is done
     right: 0;
     bottom: 0;
     position: absolute;
@@ -13,21 +12,41 @@
         flex-direction: column;
         position: relative;
         color: var(--text-main);
-        background-color: rgba(var(--bg-surface), 0.5);
-        border: 1px solid var(--border-medium);
-        border-radius: 15px;
-        padding: 10px 40px;
-        margin: 15px 0px;
+        background-color: var(--bg-surface);
+        border: 1px solid var(--ntf-border, var(--border-medium));
+        border-radius: 16px;
+        padding: 12px 40px 12px 36px;
+        margin: 12px 0px;
         max-width: 400px;
         text-align: start;
-        backdrop-filter: blur(5px);
-        animation: popupIn 0.4s forwards;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 10px 25px -5px rgba(44, 34, 30, 0.12);
+        animation: popupIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         overflow: hidden;
+
+        &.notification-info {
+            --ntf-color: var(--primary);
+            --ntf-border: rgba(200, 90, 50, 0.25);
+        }
+
+        &.notification-warn {
+            --ntf-color: #d97706;
+            --ntf-border: rgba(217, 119, 6, 0.25);
+        }
+
+        &.notification-error {
+            --ntf-color: var(--danger);
+            --ntf-border: rgba(184, 58, 46, 0.25);
+        }
 
         .icon-container {
             position: absolute;
-            right: 10px;
-            top: 10px;
+            right: 12px;
+            top: 12px;
+            color: var(--ntf-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-close {
@@ -35,6 +54,31 @@
             position: absolute;
             left: 10px;
             top: 10px;
+            color: var(--text-muted);
+            padding: 4px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+
+            &:hover {
+                color: var(--text-main);
+                background-color: var(--border-light);
+            }
+        }
+
+        .title {
+            font-weight: 700;
+            font-size: 0.925rem;
+            margin-bottom: 2px;
+            color: var(--text-main);
+        }
+
+        .text {
+            font-size: 0.825rem;
+            color: var(--text-muted);
+            line-height: 1.35;
         }
     }
 }
@@ -42,13 +86,13 @@
 @keyframes popupIn {
     0% {
         opacity: 0;
-        transform: translateX(10px);
+        transform: translateX(12px) scale(0.96);
         max-height: 0;
     }
 
     100% {
         opacity: 1;
-        transform: translateX(0px);
-        max-height: 300px; // A max-height greater than the popup height
+        transform: translateX(0px) scale(1);
+        max-height: 300px;
     }
-}
+}

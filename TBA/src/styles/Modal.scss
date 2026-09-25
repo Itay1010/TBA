@@ -2,8 +2,8 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background-color: rgba(28, 24, 21, 0.6);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -15,13 +15,13 @@
 .modal-content {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-light);
-  border-radius: 16px;
+  border-radius: 20px;
   width: 100%;
-  max-width: 400px;
-  padding: 24px;
+  max-width: 420px;
+  padding: 26px;
   box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    0 15px 30px -5px rgba(44, 34, 30, 0.15),
+    0 8px 12px -4px rgba(44, 34, 30, 0.08);
 
   .modal-header {
     display: flex;
@@ -30,21 +30,23 @@
     margin-bottom: 24px;
 
     h3 {
-      font-size: 1.125rem;
+      font-size: 1.15rem;
       font-weight: 700;
       color: var(--text-main);
     }
     .btn-close {
-      padding: 6px;
+      padding: 7px;
       border-radius: 50%;
       background-color: var(--bg-grid);
       color: var(--text-muted);
+      border: 1px solid var(--border-light);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: color 0.2s;
+      transition: all 0.2s ease;
       &:hover {
         color: var(--text-main);
+        background-color: var(--border-light);
       }
     }
   }
@@ -57,6 +59,7 @@
       font-size: 0.75rem;
       font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: 0.03em;
       color: var(--text-muted);
       margin-bottom: 6px;
     }
@@ -66,18 +69,18 @@
       background-color: var(--bg-grid);
       border: 1px solid var(--border-light);
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: 10px 14px;
       color: var(--text-main);
-      font-size: 1rem;
-      font-weight: 500;
+      font-size: 0.95rem;
+      font-weight: 600;
       outline: none;
       transition:
-        border-color 0.2s,
-        box-shadow 0.2s;
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
 
       &:focus {
         border-color: var(--primary);
-        box-shadow: 0 0 0 2px var(--primary-light);
+        box-shadow: 0 0 0 3px var(--primary-light);
       }
     }
   }
@@ -101,15 +104,16 @@
       height: 32px;
       border-radius: 50%;
       background-color: var(--t-dot);
+      border: 2px solid transparent;
       transition:
-        transform 0.2s,
-        box-shadow 0.2s;
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 
       &.active {
-        transform: scale(1.1);
+        transform: scale(1.15);
         box-shadow:
           0 0 0 2px var(--bg-surface),
-          0 0 0 4px var(--text-muted);
+          0 0 0 4px var(--primary);
       }
       &:hover {
         transform: scale(1.1);
@@ -130,48 +134,51 @@
       align-items: center;
       color: var(--danger);
       font-size: 0.875rem;
-      font-weight: 500;
-      padding: 8px 12px;
-      border-radius: 8px;
-      transition: background-color 0.2s;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      transition: background-color 0.2s ease;
+      border: 1px solid transparent;
       svg {
         margin-left: 6px;
       }
       &:hover {
         background-color: var(--danger-light);
+        border-color: rgba(184, 58, 46, 0.2);
       }
     }
 
     .action-group {
       display: flex;
-      gap: 8px;
+      gap: 10px;
 
       .btn-cancel {
         padding: 8px 16px;
-        border-radius: 8px;
+        border-radius: 9999px;
         font-size: 0.875rem;
-        font-weight: 500;
+        font-weight: 600;
         color: var(--text-muted);
-        transition: background-color 0.2s;
+        border: 1px solid var(--border-light);
+        transition: all 0.2s ease;
         &:hover {
           background-color: var(--bg-grid);
+          color: var(--text-main);
         }
       }
 
       .btn-save {
-        padding: 8px 20px;
-        border-radius: 8px;
+        padding: 8px 22px;
+        border-radius: 9999px;
         font-size: 0.875rem;
-        font-weight: 500;
+        font-weight: 600;
         background-color: var(--primary);
-        color: white;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        transition:
-          background-color 0.2s,
-          opacity 0.2s;
+        color: #ffffff;
+        box-shadow: 0 2px 4px rgba(200, 90, 50, 0.2);
+        transition: all 0.2s ease;
 
         &:hover:not(:disabled) {
           background-color: var(--primary-hover);
+          transform: translateY(-1px);
         }
         &:disabled {
           opacity: 0.5;
@@ -181,19 +188,87 @@
     }
   }
 
+  .btn-add-slot {
+    background: none;
+    border: 1px dashed var(--primary);
+    color: var(--primary);
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: var(--primary-light);
+    }
+  }
+
   .time-slots-container {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    overflow: scroll;
+    overflow-y: auto;
     max-height: 200px;
     padding: 16px 0px;
 
     .time-slot-card {
-      padding: 10px;
-      background: var(--bg-secondary, #f9fafb);
-      border-radius: 8px;
-      border: 1px solid var(--border-color, #e5e7eb);
+      padding: 12px;
+      background: var(--bg-grid);
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+
+      .days-row {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 10px;
+        direction: rtl;
+
+        .day-btn {
+          flex: 1;
+          padding: 6px 2px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          font-weight: 600;
+          transition: all 0.2s ease;
+          border: 1px solid var(--border-light);
+          background-color: var(--bg-surface);
+          color: var(--text-main);
+
+          &:hover:not(.selected) {
+            background-color: var(--border-light);
+          }
+
+          &.selected {
+            border-color: var(--primary);
+            background-color: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 1px 3px rgba(200, 90, 50, 0.2);
+          }
+        }
+      }
+
+      .btn-remove-slot {
+        background: none;
+        border: none;
+        color: var(--danger);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: var(--danger-light);
+        }
+      }
     }
 
     @media (min-width: 640px) {
@@ -210,3 +285,4 @@
     opacity: 1;
   }
 }
+
