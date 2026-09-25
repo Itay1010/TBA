@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import NotificationsArea from "../components/Notifications/NotificationsArea";
 
 /*
-  Notifications are of the following shape: { title: string, text: string, color?: string, icon?: LucideReactComponent }
+  Notifications are of the following shape: { title: string, text: string, type: string }
   NotificationsContext shape: { Notify: (Notification) => void }
 */
 const NotificationsContext = createContext(null)
@@ -29,18 +29,30 @@ export const NotificationsProvider = ({ children }) => {
             return { ...prevNtfs, [tmid]: ntf }
         })
     })
-    
-    return <NotificationsContext value={{ Notify }}>
+
+    const CloseNtf = useCallback((id) => {
+        setNtfs(prevNtfs => {
+            if (!prevNtfs?.hasOwnProperty(id))
+                return prevNtfs
+            const newNtfs = { ...prevNtfs }
+            clearTimeout(id)
+            delete newNtfs[id]
+            return newNtfs
+        })
+
+    })
+
+    return <NotificationsContext value={{ Notify, CloseNtf }}>
         {children}
-        <NotificationsArea ntfs={ntfs} />
+        <NotificationsArea ntfs={ntfs} closeFn={CloseNtf}/>
     </NotificationsContext>
 }
 
 
 export const useNotification = () => {
-  const context = useContext(NotificationsContext);
-  if (!context) {
-    throw new Error('useNotification must be used within a NotificationProvider');
-  }
-  return context;
+    const context = useContext(NotificationsContext);
+    if (!context) {
+        throw new Error('useNotification must be used within a NotificationProvider');
+    }
+    return context;
 }

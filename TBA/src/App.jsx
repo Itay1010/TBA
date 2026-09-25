@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useActionState } from 'react';
 import './App.scss';
 import { fetchSchedule, saveScheduleToApi } from '../services/fetch';
 import { IDBGetSchedule, IDBSetSchedule } from '../services/indexedDb';
@@ -7,16 +7,22 @@ import { generateId, timeToMinutes, minutesToTimeStr } from './utils/timeUtils';
 import Header from './components/Header';
 import CalendarGrid from './components/CalendarGrid/CalendarGrid';
 import BlockModal from './components/BlockModal/BlockModal';
+import LoginModal from './components/LoginModal/LoginModal';
+import { useNotification } from './contexts/NotificationContext';
+import { NOTIFICATION_TYPES } from './constants/notifications';
 
 export default function App() {
+  const { Notify } = useNotification()
+  const [loginFormPending, setLoginFormPending] = useState(false)
   const scrollContainerRef = useRef(null);
   const [loading, setLoading] = useState(true);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [schedule, setSchedule] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch (e) {}
+      } catch (e) { }
     }
     return DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
   });
@@ -323,7 +329,33 @@ export default function App() {
     closeModal();
   };
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const today = new Date().toLocaleDateString('he-IL', { weekday: 'long' });
+
+  const handleLogin = async (provider) => {
+    try {
+      setLoginFormPending(true)
+      const formData = new FormData()
+      formData.append('auth_provider', provider)
+      const res = fetch('/api/login', {
+        method: 'POST',
+        body: formData
+      })
+      if (!response.ok) {
+
+      }
+      setIsLoginOpen(false)
+
+    } catch (error) {
+      Notify({
+        title: 'שגיאה',
+        text: 'לא ניתן לבצעה התחברות כעת.',
+      })
+    } finally {
+      setLoginFormPending(false)
+
+    }
+
+  }
 
   if (loading) return <div>Loading...</div>;
 
@@ -346,6 +378,7 @@ export default function App() {
           })
         }
         onSaveSchedule={handleSaveSchedule}
+        onOpenLogin={() => setIsLoginOpen(true)}
       />
 
       {/* Calendar Grid Component */}
@@ -382,6 +415,14 @@ export default function App() {
         onUpdateSlotTime={updateSlotTime}
         onAddSlot={addSlot}
         onRemoveSlot={removeSlot}
+      />
+
+      {/* Login Modal Component */}
+      <LoginModal
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        onLogin={handleLogin}
+        isPending={loginFormPending}
       />
     </div>
   );

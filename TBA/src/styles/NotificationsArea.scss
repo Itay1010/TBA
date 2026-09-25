@@ -17,6 +17,7 @@
         border: 1px solid var(--border-medium);
         border-radius: 15px;
         padding: 10px 40px;
+        margin: 15px 0px;
         max-width: 400px;
         text-align: start;
         backdrop-filter: blur(5px);
@@ -26,7 +27,14 @@
         .icon-container {
             position: absolute;
             right: 10px;
-            top: 10;
+            top: 10px;
+        }
+
+        .btn-close {
+            width: fit-content;
+            position: absolute;
+            left: 10px;
+            top: 10px;
         }
     }
 }

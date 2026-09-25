@@ -1,8 +1,8 @@
 import React from 'react';
-import { CalendarDays, Plus, Save } from 'lucide-react';
+import { CalendarDays, Plus, Save, LogIn } from 'lucide-react';
 import { useNotification } from '../contexts/NotificationContext';
 
-export default function Header({ onAddBlock, onSaveSchedule }) {
+export default function Header({ onAddBlock, onSaveSchedule, onOpenLogin }) {
   const { Notify } = useNotification()
   return (
     <header className="app-header">
@@ -15,12 +15,17 @@ export default function Header({ onAddBlock, onSaveSchedule }) {
           <p>ניהול זמנים</p>
         </div>
       </div>
-      <button className="btn-add" onClick={onAddBlock}>
-        <Plus size={16} strokeWidth={2.5} /> <span>הוסף בלוק</span>
-      </button>
-      <button className="btn-save" onClick={onSaveSchedule}>
-        <Save size={16} strokeWidth={2.5} /> <span>שמור</span>
-      </button>
+      <div className="header-actions">
+        <button className="btn-login" onClick={onOpenLogin}>
+          <LogIn size={16} strokeWidth={2.5} /> <span>התחבר</span>
+        </button>
+        <button className="btn-add" onClick={onAddBlock}>
+          <Plus size={16} strokeWidth={2.5} /> <span>הוסף בלוק</span>
+        </button>
+        <button className="btn-save" onClick={onSaveSchedule}>
+          <Save size={16} strokeWidth={2.5} /> <span>שמור</span>
+        </button>
+      </div>
     </header>
   );
 }

@@ -20,7 +20,7 @@ export default function BlockModal({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" dir="rtl">
         <div className="modal-header">
           <h3>{isEditing ? 'עריכת בלוק' : 'בלוק חדש'}</h3>
