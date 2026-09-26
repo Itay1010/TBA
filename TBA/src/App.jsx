@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef, useActionState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.scss';
 import { fetchSchedule, saveScheduleToApi } from '../services/fetch';
 import { IDBGetSchedule, IDBSetSchedule } from '../services/indexedDb';
 import { normalizeSchedule } from '../services/apiUtils';
+import { getStoredUser, loginWithProvider, logoutUser } from '../services/auth';
 import { DAYS_OF_WEEK, LOCAL_STORAGE_KEY } from './constants/calendar';
 import { generateId, timeToMinutes, minutesToTimeStr } from './utils/timeUtils';
 import Header from './components/Header';
@@ -10,11 +11,11 @@ import CalendarGrid from './components/CalendarGrid/CalendarGrid';
 import BlockModal from './components/BlockModal/BlockModal';
 import LoginModal from './components/LoginModal/LoginModal';
 import { useNotification } from './contexts/NotificationContext';
-import { NOTIFICATION_TYPES } from './constants/notifications';
 
 export default function App() {
-  const { Notify } = useNotification()
-  const [loginFormPending, setLoginFormPending] = useState(false)
+  const { Notify } = useNotification();
+  const [loginFormPending, setLoginFormPending] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
   const scrollContainerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -98,14 +99,21 @@ export default function App() {
   // Main handler for saving the entire schedule
   const handleSaveSchedule = async () => {
     console.log('Attempting to save schedule:', schedule);
-    const success = await saveScheduleToApi(schedule);
+    const userId = currentUser?.id || '';
+    const success = await saveScheduleToApi(schedule, userId);
 
     if (success) {
       console.log('Schedule saved successfully.');
-      alert('Schedule saved successfully! (Checks network/local cache)');
+      Notify({
+        title: 'שמירה בוצעה',
+        text: 'לוח הזמנים נשמר בהצלחה!',
+      });
     } else {
       console.error('Failed to sync schedule to API.');
-      alert('Failed to sync schedule to the server. Changes saved locally.');
+      Notify({
+        title: 'שגיאה בשמירה',
+        text: 'לא ניתן לסנכרן את לוח הזמנים מול השרת. השינויים נשמרו מקומית.',
+      });
     }
   };
 
@@ -122,7 +130,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [schedule]);
+  }, [schedule, currentUser]);
 
   // Effect for scrolling to current time
   useEffect(() => {
@@ -331,29 +339,34 @@ export default function App() {
   const handleLogin = async (provider) => {
     try {
       setLoginFormPending(true);
-      const formData = new FormData();
-      formData.append('auth_provider', provider);
-      const res = await fetch('/auth/login', {
-        method: 'POST',
-        body: formData
-      });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        const errorMsg = errJson?.error || 'לא ניתן לבצע התחברות כעת.';
-        Notify({
-          title: 'שגיאה',
-          text: errorMsg,
-        });
-        return;
-      }
+      const user = await loginWithProvider(provider);
+      setCurrentUser(user);
       setIsLoginOpen(false);
+      Notify({
+        title: 'התחברות הצליחה',
+        text: `ברוך הבא, ${user.name}!`,
+      });
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'לא ניתן לבצע התחברות כעת.';
       Notify({
         title: 'שגיאה',
-        text: 'לא ניתן לבצע התחברות כעת.',
+        text: errorMsg,
       });
     } finally {
       setLoginFormPending(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      setCurrentUser(null);
+      Notify({
+        title: 'התנתקות',
+        text: 'התנתקת בהצלחה מלוח הזמנים.',
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
     }
   };
 
@@ -379,6 +392,8 @@ export default function App() {
         }
         onSaveSchedule={handleSaveSchedule}
         onOpenLogin={() => setIsLoginOpen(true)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Calendar Grid Component */}

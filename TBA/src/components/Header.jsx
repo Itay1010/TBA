@@ -1,9 +1,10 @@
 import React from 'react';
-import { CalendarDays, Plus, Save, LogIn } from 'lucide-react';
+import { CalendarDays, Plus, Save, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { useNotification } from '../contexts/NotificationContext';
 
-export default function Header({ onAddBlock, onSaveSchedule, onOpenLogin }) {
-  const { Notify } = useNotification()
+export default function Header({ onAddBlock, onSaveSchedule, onOpenLogin, currentUser, onLogout }) {
+  const { Notify } = useNotification();
+
   return (
     <header className="app-header">
       <div className="header-title-group">
@@ -16,9 +17,22 @@ export default function Header({ onAddBlock, onSaveSchedule, onOpenLogin }) {
         </div>
       </div>
       <div className="header-actions">
-        <button className="btn-login" onClick={onOpenLogin}>
-          <LogIn size={16} strokeWidth={2.5} /> <span>התחבר</span>
-        </button>
+        {currentUser ? (
+          <div className="user-profile-group">
+            <div className="user-badge" title={currentUser.email || currentUser.name}>
+              <UserIcon size={16} strokeWidth={2.5} />
+              <span className="user-name">{currentUser.name}</span>
+            </div>
+            <button className="btn-logout" onClick={onLogout} title="התנתק">
+              <LogOut size={16} strokeWidth={2.5} />
+              <span>התנתק</span>
+            </button>
+          </div>
+        ) : (
+          <button className="btn-login" onClick={onOpenLogin}>
+            <LogIn size={16} strokeWidth={2.5} /> <span>התחבר</span>
+          </button>
+        )}
         <button className="btn-add" onClick={onAddBlock}>
           <Plus size={16} strokeWidth={2.5} /> <span>הוסף בלוק</span>
         </button>
