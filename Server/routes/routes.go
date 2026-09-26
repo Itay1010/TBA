@@ -27,7 +27,6 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 	// Auth
 	authMux.HandleFunc("POST /auth/login", handleLogin)
 	authMux.HandleFunc("POST /auth/logout", handleLogout)
-
 	authMux.HandleFunc("/auth/callback", handleCallback)
 
 	// Static assets
@@ -50,7 +49,8 @@ func getSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	sch, err := srv.GetSchedule(r.Context(), models.UserID(userID))
 	if err != nil {
-		http.Error(w, "Could not retrieve schedule", http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, "Could not retrieve schedule", err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", utl.HttpContentJSON)
@@ -59,7 +59,8 @@ func getSchedule(w http.ResponseWriter, r *http.Request) {
 func saveBlocks(w http.ResponseWriter, r *http.Request) {
 	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusBadRequest)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusBadRequest)
 		return
 	}
 	if len(req.Blocks) == 0 {
@@ -69,14 +70,16 @@ func saveBlocks(w http.ResponseWriter, r *http.Request) {
 
 	err := srv.UpdateBlocks(r.Context(), blocks)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 }
 func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("%s", err.Error()), http.StatusBadRequest)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusBadRequest)
 		return
 	}
 	if len(req.Blocks) == 0 {
@@ -85,7 +88,8 @@ func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	blocks := utl.ReqBlocksToDB(models.UserID(req.UserID), req.Blocks)
 	err := srv.DeleteBlocks(r.Context(), blocks)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 
@@ -135,7 +139,8 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	providerName := r.FormValue("auth_provider")
 	provider, err := auth.GetOAuthProvider(providerName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	cookie := http.Cookie{
@@ -153,32 +158,33 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 func handleCallback(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("provider")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 
 	provider, err := auth.GetOAuthProvider(cookie.Value)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	provider.Callback(w, r)
 }
 
 func handleLogout(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_token")
-	if err == nil && cookie.Value != "" {
-		_ = srv.InvalidateSession(r.Context(), cookie.Value)
+	cookie, err := r.Cookie("provider")
+	if err != nil && cookie.Value != "" {
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
+		return
+	}
+	provider, err := auth.GetOAuthProvider(cookie.Value)
+	if err != nil {
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
+		return
 	}
 
-	clearCookie := http.Cookie{
-		Name:     "session_token",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   !srv.IsDev(),
-	}
-	http.SetCookie(w, &clearCookie)
-	w.WriteHeader(http.StatusOK)
+	provider.Logout(w, r)
 }

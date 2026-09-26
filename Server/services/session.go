@@ -125,4 +125,3 @@ func StoreSession(sessionID string, UID string) (*models.SessionState, error) {
 		Expires:          session.ExpiresAt.Format(time.RFC3339),
 	}, nil
 }
-

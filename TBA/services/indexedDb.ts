@@ -1,4 +1,5 @@
-import "./indexedDB.h.ts"
+import { UISchedule } from "./indexedDB.h";
+import { normalizeSchedule } from "./apiUtils";
 const IDB_STORE_NAME = "TBA-ST";
 const IDB_DB_NAME = "TBA-DB";
 const DB_VERSION = 1;
@@ -88,12 +89,12 @@ export async function IDBGet(key: string): Promise<any> {
     }
 }
 
-export async function IDBGetSchedule(): Promise<Schedule | null> {
+export async function IDBGetSchedule(): Promise<UISchedule | null> {
     const result = await IDBGet('calendarSchedule');
-    return result ? result as Schedule : null;
+    return result ? normalizeSchedule(result) : null;
 }
 
-export async function IDBSetSchedule(data: Schedule): Promise<void> {
-    // This function now delegates to IDBSave which handles both layers
-    await IDBSave('calendarSchedule', data);
+export async function IDBSetSchedule(data: any): Promise<void> {
+    const normalized = normalizeSchedule(data);
+    await IDBSave('calendarSchedule', normalized);
 }

@@ -1,16 +1,18 @@
-type Days = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
+// IndexedDB storage type definitions
 
-type Block = {
-    block_id: string,
-    user_id: string,
-    day: string,
-    title: string,
-    color: string,
-    start_time: string,
-    end_time: string,
-}
-
-type Schedule = {
-    user_id: string,
-    blocks: { [K in Days]: Block[] }
+export type UIBlock = {
+    id: string;
+    title: string;
+    day: string;
+    color: string;
+    startTime: string;
+    endTime: string;
+    userId?: string;
 };
+
+export type UISchedule = Record<string, UIBlock[]>;
+
+export interface IDBRecord {
+    IDBKey: string;
+    data: UISchedule | any;
+}

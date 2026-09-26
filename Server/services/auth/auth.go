@@ -29,7 +29,6 @@ const UserIDKey string = "userID"
 /* METHODS */
 
 func (PM *ProviderManager) Login(w http.ResponseWriter, r *http.Request) {
-	// TODO: move redirect logic to "routes.go" handler
 
 	// Generate a random state and store it in a cookie for validation later
 	oauthState := PM.GenerateStateOauthCookie(w)
@@ -46,7 +45,13 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	// Validate the state parameter to prevent CSRF attacks
 	oauthStateCookie, err := r.Cookie("oauthstate")
 	if err != nil || r.FormValue("state") != oauthStateCookie.Value {
-		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
+		errStr := "Invalid OAuth state"
+		jsonRes := srv.MakeHttpJsonRes[any](nil, errStr, err)
+		if jsonRes == "" {
+			http.Error(w, errStr, http.StatusBadRequest)
+			return
+		}
+		http.Error(w, jsonRes, http.StatusBadRequest)
 		return
 	}
 
@@ -61,12 +66,16 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	// This makes a server-to-server HTTP request to the provider.
 	token, err := PM.ProviderConfig.Exchange(context.Background(), code)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Code exchange failed: %s", err.Error()), http.StatusInternalServerError)
+		errStr := fmt.Sprintf("Code exchange failed: %s", err.Error())
+		jsonRes := srv.MakeHttpJsonRes[any](nil, errStr, err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	idToken := token.Extra("id_token")
 	if idt, ok := idToken.(string); !ok {
-		http.Error(w, "Unexpected error: missing token field. This is a server error.", http.StatusInternalServerError)
+		errStr := "Unexpected error: missing token field. This is a server error."
+		jsonRes := srv.MakeHttpJsonRes[any](nil, errStr, err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	} else {
 		idToken = idt
@@ -74,34 +83,38 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 
 	// Use the token to fetch user information (Authentication)
 	// PM.SP.Client automatically attaches the Bearer token to all requests.
-	// TODO: Move this to a function?
 	client := PM.ProviderConfig.Client(context.Background(), token)
 	endpoint := PM.GetUserInfoURL()
 	if endpoint == "" {
-		http.Error(w, "Provider config error", http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, "Provider config error", err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	resp, err := client.Get(endpoint)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get user info: %s", err.Error()), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, fmt.Sprintf("Failed to get user info: %s", err.Error()), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		http.Error(w, fmt.Errorf("provider returned status %d", resp.StatusCode).Error(), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, fmt.Sprintf("provider returned status %d", resp.StatusCode), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 
 	var rawProfile map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&rawProfile); err != nil {
-		http.Error(w, fmt.Errorf("failed to decode user profile: %w", err).Error(), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, fmt.Sprintf("failed to decode user profile: %s", err.Error()), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 
 	// Upsert User record
 	userObj, err := getUserFromRawProfile(rawProfile, PM.ProviderName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	_ = srv.UpsertUser(r.Context(), userObj)
@@ -112,7 +125,8 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	// Store full session with OAuth tokens in DB
 	session, err := srv.CreateSession(r.Context(), sessionID, userObj.UserID, PM.ProviderName, token)
 	if err != nil {
-		http.Error(w, "Failed to store session", http.StatusInternalServerError)
+		jsonRes := srv.MakeHttpJsonRes[any](nil, "Failed to store session", err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 
@@ -167,9 +181,6 @@ func (PM *ProviderManager) Logout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 	}
 	http.SetCookie(w, &clearCookie)
-
-	// Send them back home
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (PM *ProviderManager) GetUserInfoURL() string {

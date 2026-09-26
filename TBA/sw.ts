@@ -2,7 +2,7 @@
 declare let self: ServiceWorkerGlobalScope
 export default null
 
-import "./services/indexedDB.h"
+import { normalizeSchedule } from "./services/apiUtils"
 import { IDBGetSchedule, IDBSave, IDBSetSchedule } from "./services/indexedDb"
 
 const CACHE_NAME = 'TBA-v1';
@@ -19,12 +19,15 @@ self.addEventListener('install', (event) => {
         const apiRes = await fetch('/api/schedule');
         if (apiRes.ok) {
           try {
-            const apiSchedule: Schedule = await apiRes.json();
-            IDBSetSchedule(apiSchedule);
+            const rawSchedule = await apiRes.json();
+            const normalized = normalizeSchedule(rawSchedule);
+            IDBSetSchedule(normalized);
             console.log("Successfully set IDB with API schedule.");
           } catch (error) {
             console.warn("Could not set IDB with API schedule. Read:", error);
           }
+        } else {
+
         }
       } catch (e) {
         console.error("Error during service worker install:", e);
@@ -45,11 +48,12 @@ async function networkFirst(request: Request) {
 
     if (isApiScheduleReq) {
       try {
-        const reqSchedule: Schedule = await reqCpy.json();
+        const reqSchedule = await reqCpy.json();
         console.log('[SW]: Saving schedule to IDB based on POST req.');
         
         if (reqSchedule) {
-          IDBSetSchedule(reqSchedule);
+          const normalized = normalizeSchedule(reqSchedule);
+          IDBSetSchedule(normalized);
         } else {
           console.warn("Could not parse schedule from IDB")
         }
@@ -65,7 +69,7 @@ async function networkFirst(request: Request) {
     if (!networkResponse.ok)
       throw `Error with status code: ${networkResponse.status}`;
     // Cache static assets (not API calls)
-    if (request.method == "GET" /*&& /^https?:$/i.test(new URL(request.url).protocol) */ && !isApiRequest) {
+    if (request.method == "GET" && !isApiRequest) {
       const cache = await caches.open(CACHE_NAME);
       console.log("caching files in path: ", request.url);
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useActionState } from 'react';
 import './App.scss';
 import { fetchSchedule, saveScheduleToApi } from '../services/fetch';
 import { IDBGetSchedule, IDBSetSchedule } from '../services/indexedDb';
+import { normalizeSchedule } from '../services/apiUtils';
 import { DAYS_OF_WEEK, LOCAL_STORAGE_KEY } from './constants/calendar';
 import { generateId, timeToMinutes, minutesToTimeStr } from './utils/timeUtils';
 import Header from './components/Header';
@@ -21,7 +22,7 @@ export default function App() {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        return normalizeSchedule(JSON.parse(saved));
       } catch (e) { }
     }
     return DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
@@ -51,16 +52,12 @@ export default function App() {
   useEffect(() => {
     const getState = async () => {
       try {
-        // FIX: Directly fetch from API to bypass the Service Worker race condition
+        // Directly fetch from API to bypass the Service Worker race condition
         // If the SW hasn't finished dumping to IDB, this ensures we get the freshest state on load.
-        const freshScheduleRes = await fetchSchedule();
-        let freshSchedule;
-        if (freshScheduleRes && typeof freshScheduleRes === 'string')
-          freshSchedule = JSON.parse(freshScheduleRes);
-        else freshSchedule = freshScheduleRes;
+        const freshSchedule = await fetchSchedule();
         if (freshSchedule && Object.keys(freshSchedule).length !== 0) {
           await IDBSetSchedule(freshSchedule); // Sync DB so SW stays happy
-          setSchedule(() => ({ ...freshSchedule }));
+          setSchedule(freshSchedule);
           return;
         }
       } catch (apiError) {
@@ -72,14 +69,14 @@ export default function App() {
         const dbSchedule = await IDBGetSchedule();
 
         if (dbSchedule && Object.keys(dbSchedule).length !== 0) {
-          return setSchedule(() => ({ ...dbSchedule }));
+          return setSchedule(normalizeSchedule(dbSchedule));
         }
 
         console.log('IndexedDB empty, attempting localStorage fallback.');
         const localSchedule = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (localSchedule) {
           const parsedSched = JSON.parse(localSchedule);
-          return setSchedule(() => ({ ...parsedSched }));
+          return setSchedule(normalizeSchedule(parsedSched));
         }
       } catch (e) {
         console.error('Error reading schedule from local persistence layers.', e);
@@ -333,29 +330,32 @@ export default function App() {
 
   const handleLogin = async (provider) => {
     try {
-      setLoginFormPending(true)
-      const formData = new FormData()
-      formData.append('auth_provider', provider)
-      const res = fetch('/api/login', {
+      setLoginFormPending(true);
+      const formData = new FormData();
+      formData.append('auth_provider', provider);
+      const res = await fetch('/auth/login', {
         method: 'POST',
         body: formData
-      })
-      if (!response.ok) {
-
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        const errorMsg = errJson?.error || 'לא ניתן לבצע התחברות כעת.';
+        Notify({
+          title: 'שגיאה',
+          text: errorMsg,
+        });
+        return;
       }
-      setIsLoginOpen(false)
-
+      setIsLoginOpen(false);
     } catch (error) {
       Notify({
         title: 'שגיאה',
-        text: 'לא ניתן לבצעה התחברות כעת.',
-      })
+        text: 'לא ניתן לבצע התחברות כעת.',
+      });
     } finally {
-      setLoginFormPending(false)
-
+      setLoginFormPending(false);
     }
-
-  }
+  };
 
   if (loading) return <div>Loading...</div>;
 

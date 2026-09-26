@@ -1,7 +1,10 @@
 // Package models provides the global data shape used throughout the application.
 package models
 
-import "time"
+import (
+	"net/http"
+	"time"
+)
 
 /* USERS & SESSIONS */
 
@@ -38,6 +41,12 @@ type SessionState struct {
 	UserID           string `json:"user_id"`
 	AuthProviderName string `json:"auth_provider_name"`
 	Expires          string `json:"expires"`
+}
+
+type AuthProvider interface {
+	Login(w http.ResponseWriter, r *http.Request)
+	Logout(w http.ResponseWriter, r *http.Request)
+	Callback(w http.ResponseWriter, r *http.Request)
 }
 
 /* BLOCKS */
@@ -85,4 +94,12 @@ type ResponseBlock struct {
 type ScheduleReq struct {
 	UserID string         `json:"user_id"`
 	Blocks []RequestBlock `json:"blocks"`
+}
+
+/* HTTP RESPONSES */
+
+type HttpRes[T any] struct {
+	Data     T               `json:"data,omitempty"`
+	Error    string          `json:"error,omitempty"`
+	Metadata *map[string]any `json:"metadata,omitempty"`
 }

@@ -1,37 +1,74 @@
-import { IDBSetSchedule } from './indexedDb';
+import { HttpRes, ScheduleReq } from './apiModels';
+import { UISchedule } from './indexedDB.h';
+import {
+    normalizeSchedule,
+    toScheduleReq,
+} from './apiUtils';
+
 export const defaultGetHeaders = { 'Accept': 'application/json' };
 export const defaultPostHeaders = { 'Content-Type': 'application/json' };
 export const SCHEDULE_API_PATH = '/api/schedule';
 
-type defaultOptionsType = { headers: HeadersInit, method: string, body: any }
+type DefaultOptionsType = { headers: HeadersInit; method: string; body: any };
 
-export async function fetchFromApi(reqPath: RequestInfo | URL, options: Record<string, any> = {}) {
-    const defaultOptions: defaultOptionsType = { headers: defaultGetHeaders, method: 'get', body: null };
+export async function fetchFromApi<T = any>(
+    reqPath: RequestInfo | URL,
+    options: Record<string, any> = {}
+): Promise<HttpRes<T> | T | null> {
+    const defaultOptions: DefaultOptionsType = { headers: defaultGetHeaders, method: 'get', body: null };
     options = { ...defaultOptions, ...options };
     try {
         const res = await fetch(reqPath, options);
-        if (res.ok)
-            return res.headers.get('Content-Type') === 'application/json' ? await res.json() : await res.text();
-        else
-            throw res.status;
+        const contentType = res.headers.get('Content-Type') || '';
+        const isJson = contentType.includes('application/json');
+
+        if (res.ok) {
+            return isJson ? await res.json() : (await res.text() as unknown as T);
+        } else {
+            if (isJson) {
+                const errJson = await res.json();
+                console.error(`API Error (${res.status}):`, errJson);
+                return errJson;
+            } else {
+                const errText = await res.text();
+                console.error(`API Error (${res.status}):`, errText);
+                return { error: errText || `HTTP ${res.status}` } as HttpRes<T>;
+            }
+        }
     } catch (error) {
-        console.error(`Error; "${options.method}" to "${reqPath}" failed.\n `, error);
-        return null;
+        console.error(`Error: "${options.method}" to "${reqPath}" failed.\n`, error);
+        return { error: error instanceof Error ? error.message : String(error) } as HttpRes<T>;
     }
 }
 
-export function fetchSchedule() {
-    return fetchFromApi(SCHEDULE_API_PATH, { method: 'get' })
+export async function fetchSchedule(): Promise<UISchedule | null> {
+    const rawRes = await fetchFromApi(SCHEDULE_API_PATH, { method: 'get' });
+    if (!rawRes) return null;
+
+    if (typeof rawRes === 'object' && 'error' in rawRes && rawRes.error && !('data' in rawRes && rawRes.data)) {
+        console.error("fetchSchedule returned error:", rawRes.error);
+        return null;
+    }
+
+    return normalizeSchedule(rawRes);
 }
 
-export async function saveScheduleToApi(schedule: Schedule) {
-    // await IDBSetSchedule(schedule);
-    console.log("save sync", schedule);
-    
-    const apiResponse = await fetchFromApi(SCHEDULE_API_PATH, { body: JSON.stringify(schedule), method: "post", headers: { 'Content-Type': 'application/json' } });
-    
+export async function saveScheduleToApi(schedule: UISchedule, userId: string = ''): Promise<boolean> {
+    console.log("save sync payload:", schedule);
+    const payload: ScheduleReq = toScheduleReq(schedule, userId);
+
+    const apiResponse = await fetchFromApi(SCHEDULE_API_PATH, {
+        body: JSON.stringify(payload),
+        method: "post",
+        headers: defaultPostHeaders
+    });
+
     if (apiResponse) {
-        return true; // Indicate success for optimistic UI update
+        if (typeof apiResponse === 'object' && 'error' in apiResponse && apiResponse.error) {
+            console.error("Failed to save schedule:", apiResponse.error);
+            return false;
+        }
+        return true; // Indicate success
     }
     return false; // Indicate failure
 }
