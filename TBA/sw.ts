@@ -39,12 +39,16 @@ self.addEventListener('install', (event) => {
 
 
 async function networkFirst(request: Request) {
-  const isApiRequest = (new URL(request.url)).pathname.includes("/api")
-  const isApiScheduleReq = isApiRequest && (new URL(request.url)).pathname.includes("/api/schedule") && request.method == "POST";
+  const requestPathname = (new URL(request.url)).pathname
+  const isApiRequest = requestPathname.includes("/api")
+  const isApiScheduleReq = isApiRequest && requestPathname.includes("/api/schedule") && request.method == "POST";
+  const isAuthRequest = requestPathname.includes("/auth")
   const reqCpy = request.clone()
   try {
     const networkResponse = await fetch(request);
 
+    if(isAuthRequest)
+      return networkResponse
 
     if (isApiScheduleReq) {
       try {
@@ -79,7 +83,7 @@ async function networkFirst(request: Request) {
     return networkResponse;
   } catch (error) {
     console.error("Network fetch failed.", error);
-    if (isApiScheduleReq)
+    if (isApiScheduleReq || isAuthRequest)
       return new Response(null, { status: 200 });
 
     console.log("Returning cached response.");

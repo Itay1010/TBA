@@ -1,15 +1,16 @@
 import React from 'react';
 import { CalendarDays, Plus, Save, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import TBAIcon from '../assets/tba-icon.svg'
 import { useNotification } from '../contexts/NotificationContext';
 
 export default function Header({ onAddBlock, onSaveSchedule, onOpenLogin, currentUser, onLogout }) {
   const { Notify } = useNotification();
-
+  
   return (
     <header className="app-header">
       <div className="header-title-group">
         <div className="icon-box">
-          <CalendarDays size={20} strokeWidth={2.5} />
+          <img src={TBAIcon} style={{height:"25px", width:"25px"}}/>
         </div>
         <div>
           <h1>לוח שבועי</h1>
@@ -19,7 +20,7 @@ export default function Header({ onAddBlock, onSaveSchedule, onOpenLogin, curren
       <div className="header-actions">
         {currentUser ? (
           <div className="user-profile-group">
-            <div className="user-badge" title={currentUser.email || currentUser.name}>
+            <div className="user-badge" title={currentUser.name}>
               <UserIcon size={16} strokeWidth={2.5} />
               <span className="user-name">{currentUser.name}</span>
             </div>

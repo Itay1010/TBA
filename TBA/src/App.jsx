@@ -3,7 +3,7 @@ import './App.scss';
 import { fetchSchedule, saveScheduleToApi } from '../services/fetch';
 import { IDBGetSchedule, IDBSetSchedule } from '../services/indexedDb';
 import { normalizeSchedule } from '../services/apiUtils';
-import { getStoredUser, loginWithProvider, logoutUser } from '../services/auth';
+import { getStoredUser, triggerOAuthLogin, fetchCurrentUser, logoutUser } from '../services/auth';
 import { DAYS_OF_WEEK, LOCAL_STORAGE_KEY } from './constants/calendar';
 import { generateId, timeToMinutes, minutesToTimeStr } from './utils/timeUtils';
 import Header from './components/Header';
@@ -52,6 +52,15 @@ export default function App() {
 
   useEffect(() => {
     const getState = async () => {
+      // 1. Fetch current user session from server /api/me
+      try {
+        const user = await fetchCurrentUser();
+        setCurrentUser(user);
+      } catch (authErr) {
+        console.warn('Failed to verify session on mount:', authErr);
+      }
+
+      // 2. Fetch schedule
       try {
         // Directly fetch from API to bypass the Service Worker race condition
         // If the SW hasn't finished dumping to IDB, this ensures we get the freshest state on load.
@@ -339,21 +348,14 @@ export default function App() {
   const handleLogin = async (provider) => {
     try {
       setLoginFormPending(true);
-      const user = await loginWithProvider(provider);
-      setCurrentUser(user);
-      setIsLoginOpen(false);
-      Notify({
-        title: 'התחברות הצליחה',
-        text: `ברוך הבא, ${user.name}!`,
-      });
+      await triggerOAuthLogin(provider);
     } catch (error) {
+      setLoginFormPending(false);
       const errorMsg = error instanceof Error ? error.message : 'לא ניתן לבצע התחברות כעת.';
       Notify({
         title: 'שגיאה',
         text: errorMsg,
       });
-    } finally {
-      setLoginFormPending(false);
     }
   };
 

@@ -45,5 +45,5 @@ func LoadEnv() error {
 
 func IsDev() bool {
 	isDev, err := strconv.ParseBool(strings.TrimSpace(os.Getenv("DEV")))
-	return isDev && err != nil
+	return isDev && err == nil
 }

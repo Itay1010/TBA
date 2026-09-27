@@ -23,6 +23,7 @@ func RegisterRoutes(mux *http.ServeMux) *http.ServeMux {
 	apiMux.HandleFunc("POST /api/schedule", saveBlocks)
 	apiMux.HandleFunc("DELETE /api/schedule", deleteBlocks)
 	apiMux.HandleFunc("GET /api/tea", getTea)
+	apiMux.HandleFunc("GET /api/me", getMe)
 
 	// Auth
 	authMux.HandleFunc("POST /auth/login", handleLogin)
@@ -131,6 +132,26 @@ func getTea(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", utl.HttpContentMD)
 	w.Write(tea)
 	w.Write([]byte("\n\nThanks api.thetea.app for the tea\n\n"))
+}
+
+func getMe(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(auth.UserIDKey).(string)
+	if !ok || userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	user, err := srv.GetUser(r.Context(), models.UserID(userID))
+	if err != nil {
+		jsonRes := srv.MakeHttpJsonRes[any](nil, "Could not retrieve user profile", err)
+		http.Error(w, jsonRes, http.StatusInternalServerError)
+		return
+	}
+	resData := map[string]string{
+		"id":   string(user.UserID),
+		"name": user.Name,
+	}
+	w.Header().Set("Content-Type", utl.HttpContentJSON)
+	_ = json.NewEncoder(w).Encode(resData)
 }
 
 /* AUTH */

@@ -10,6 +10,11 @@ export default defineConfig(({ command, mode }) => {
         target: 'http://localhost:3000',
         changeOrigin: true, // Needed for virtual hosted sites
         secure: false,      // Set to false if using self-signed SSL certificates
+      },
+      '/auth': {
+        target: 'http://localhost:3000',
+        changeOrigin: true, // Needed for virtual hosted sites
+        secure: false,      // Set to false if using self-signed SSL certificates
       }
     }
   }

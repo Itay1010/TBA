@@ -1,10 +1,6 @@
 export interface AuthUser {
   id: string;
   name: string;
-  email?: string;
-  avatar?: string;
-  provider: 'google' | 'facebook' | 'github' | string;
-  loggedInAt?: string;
 }
 
 const AUTH_USER_KEY = 'tba_auth_user';
@@ -37,26 +33,13 @@ export function setStoredUser(user: AuthUser | null): void {
   }
 }
 
-function getProviderDisplayName(provider: string): string {
-  switch (provider.toLowerCase()) {
-    case 'google':
-      return 'משתמש Google';
-    case 'facebook':
-      return 'משתמש Facebook';
-    case 'github':
-      return 'משתמש GitHub';
-    default:
-      return 'משתמש מחובר';
-  }
-}
-
 /**
- * Login function that sends auth request to backend /auth/login,
- * handles API response, creates user record, and caches it locally.
- * Throws an error on network/server failure without inventing fallback users.
+ * Initiates top-level browser navigation to /auth/login with selected provider.
+ * This submits a POST request via form submission so the browser follows
+ * the server's 307 redirect to the provider's OAuth consent screen.
  */
-export async function loginWithProvider(provider: string): Promise<AuthUser> {
-  const formData = new FormData();
+export async function triggerOAuthLogin(provider: string): Promise<void> {
+const formData = new FormData();
   formData.append('auth_provider', provider);
 
   let res: Response;
@@ -65,41 +48,56 @@ export async function loginWithProvider(provider: string): Promise<AuthUser> {
       method: 'POST',
       body: formData,
     });
+    if(!res.ok) {
+      throw new Error("Something when wrong")
+    }
+    const redirectURL = await res.text()
+    window.location.assign(redirectURL)
+
   } catch (netError) {
     console.error('Network request to /auth/login failed:', netError);
     throw new Error('לא ניתן להתחבר כעת. שגיאת תקשורת מול שרת ההתחברות.');
   }
 
-  if (!res.ok) {
+  if (!!res && !res.ok) {
     const errJson = await res.json().catch(() => null);
     const errorMsg = errJson?.error || errJson?.message || 'התחברות נכשלה. נא לנסות שוב.';
     throw new Error(errorMsg);
   }
-
-  const data = await res.json().catch(() => null);
-  if (!data) {
-    throw new Error('תשובת שרת ההתחברות אינה תקינה.');
-  }
-
-  const user: AuthUser = {
-    id: data.user_id || data.id || data.userId || '',
-    name: data.name || data.username || getProviderDisplayName(provider),
-    email: data.email || '',
-    avatar: data.avatar || data.picture || '',
-    provider: provider,
-    loggedInAt: new Date().toISOString(),
-  };
-
-  if (!user.id) {
-    throw new Error('מזהה משתמש לא התקבל משרת ההתחברות.');
-  }
-
-  setStoredUser(user);
-  return user;
 }
 
 /**
- * Logout function that clears session locally and optionally calls /auth/logout
+ * Fetches current authenticated user profile from /api/me using session cookie.
+ */
+export async function fetchCurrentUser(): Promise<AuthUser | null> {
+  try {
+    const res = await fetch('/api/me', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!res.ok) {
+      setStoredUser(null);
+      return null;
+    }
+    const data = await res.json();
+    if (data && data.name) {
+      const user: AuthUser = {
+        id: data.id || data.user_id || '',
+        name: data.name,
+      };
+      setStoredUser(user);
+      return user;
+    }
+    setStoredUser(null);
+    return null;
+  } catch (e) {
+    console.warn('Failed to fetch user session:', e);
+    return getStoredUser();
+  }
+}
+
+/**
+ * Logout function that clears session on server and locally
  */
 export async function logoutUser(): Promise<void> {
   try {

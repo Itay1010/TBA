@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-	//TODO: Structured responses on success and failure
 	loggerFile := srv.WireLogger()
 	if loggerFile == nil {
 		panic(fmt.Errorf("error: Logger cannot be wired for some reason"))

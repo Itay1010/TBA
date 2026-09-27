@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -37,8 +38,8 @@ func (PM *ProviderManager) Login(w http.ResponseWriter, r *http.Request) {
 	// oauth2.AccessTypeOffline requests a refresh token alongside the access token.
 	u := PM.ProviderConfig.AuthCodeURL(oauthState, oauth2.AccessTypeOffline)
 
-	// Redirect the user to the provider's consent screen
-	http.Redirect(w, r, u, http.StatusTemporaryRedirect)
+	// Send back the URL to the provider's consent screen
+	w.Write([]byte(u))
 }
 
 func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
@@ -318,7 +319,7 @@ func GetOAuthProvider(name string) (*ProviderManager, error) {
 		ClientSecret: providerSecret,
 		RedirectURL:  RedirectURL,
 		Endpoint:     providerEndpoint,
-		Scopes:       []string{"openid"},
+		Scopes:       []string{"openid", "profile", "email"},
 	}
 
 	provider.ProviderConfig = oauthConfig
@@ -339,29 +340,28 @@ func getUserFromRawProfile(rawProfile map[string]any, providerName string) (*mod
 	if rawID == "" {
 		return nil, fmt.Errorf("could not find unique account ID in provider profile")
 	}
-	// Create composite User ID (e.g., "github:12345678")
-	userID := fmt.Sprintf("%s:%s", providerName, rawID)
 
-	// Extract profile details
-	var email, name, avatarURL string
-	if e, ok := rawProfile["email"].(string); ok {
-		email = e
-	}
-	if n, ok := rawProfile["name"].(string); ok {
+	// Create composite raw string and compute one-way SHA-256 hash
+	rawCompositeID := fmt.Sprintf("%s:%s", providerName, rawID)
+	hashedIDBytes := sha256.Sum256([]byte(rawCompositeID))
+	userID := fmt.Sprintf("%x", hashedIDBytes)
+
+	// Extract display name
+	var name string
+	if gn, ok := rawProfile["given_name"].(string); ok && strings.TrimSpace(gn) != "" {
+		name = gn
+	} else if n, ok := rawProfile["name"].(string); ok && strings.TrimSpace(n) != "" {
 		name = n
-	}
-	if a, ok := rawProfile["avatar_url"].(string); ok {
-		avatarURL = a
-	} else if a, ok := rawProfile["picture"].(string); ok {
-		avatarURL = a
+	} else if l, ok := rawProfile["login"].(string); ok && strings.TrimSpace(l) != "" {
+		name = l
+	} else {
+		return nil, fmt.Errorf("could not find user name")
 	}
 
-	// Upsert User record
+	// Upsert User record with hashed UserID
 	userObj := &models.User{
-		UserID:    models.UserID(userID),
-		Email:     email,
-		Name:      name,
-		AvatarURL: avatarURL,
+		UserID: models.UserID(userID),
+		Name:   name,
 	}
 	return userObj, nil
 }
