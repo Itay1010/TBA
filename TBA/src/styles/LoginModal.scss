@@ -40,6 +40,7 @@
         color: var(--text-main);
         margin: 0;
       }
+
       p {
         font-size: 0.85rem;
         color: var(--text-muted);
@@ -73,6 +74,7 @@
     margin-top: 16px;
 
     .social-btn {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -92,7 +94,13 @@
         justify-content: center;
         width: 22px;
         height: 22px;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translate(-100%, -50%);
       }
+
+      .social-text {}
 
       &.social-btn-google {
         background-color: var(--bg-surface);
@@ -159,6 +167,7 @@
       }
     }
   }
+
   .social-icon {
     .spinner {
       animation: spin 1s linear infinite;
@@ -170,6 +179,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -179,6 +189,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -189,6 +200,7 @@
     opacity: 0;
     transform: translateY(12px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);

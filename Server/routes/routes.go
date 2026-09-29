@@ -194,18 +194,32 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLogout(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("provider")
-	if err != nil && cookie.Value != "" {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
-		http.Error(w, jsonRes, http.StatusInternalServerError)
+	cookie, err := r.Cookie("session_token")
+	if err != nil || cookie == nil || cookie.Value == "" {
+		// No cookie found -> unauthorized
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	provider, err := auth.GetOAuthProvider(cookie.Value)
+
+	session, exists := srv.LoadSession(r.Context(), cookie.Value)
+	if !exists {
+		// Cookie exists, but it's invalid or expired on the server -> clear it and redirect/unauthorize
+		clearCookie := http.Cookie{
+			Name:     "session_token",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+		}
+		http.SetCookie(w, &clearCookie)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	provider, err := auth.GetOAuthProvider(session.AuthProvider)
 	if err != nil {
 		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
-
 	provider.Logout(w, r)
 }

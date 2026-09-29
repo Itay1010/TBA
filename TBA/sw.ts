@@ -39,15 +39,17 @@ self.addEventListener('install', (event) => {
 
 
 async function networkFirst(request: Request) {
-  const requestPathname = (new URL(request.url)).pathname
+  const requestUrl = new URL(request.url)
+  const requestPathname = requestUrl.pathname
   const isApiRequest = requestPathname.includes("/api")
   const isApiScheduleReq = isApiRequest && requestPathname.includes("/api/schedule") && request.method == "POST";
   const isAuthRequest = requestPathname.includes("/auth")
+  const bypassCache = isAuthRequest || requestUrl.hostname.includes("google")
   const reqCpy = request.clone()
   try {
     const networkResponse = await fetch(request);
 
-    if(isAuthRequest)
+    if(bypassCache)
       return networkResponse
 
     if (isApiScheduleReq) {
@@ -96,35 +98,6 @@ async function networkFirst(request: Request) {
 // Fetch event: Network First strategy
 self.addEventListener('fetch', event => {
   event.respondWith(networkFirst(event.request));
-
-  // const requestUrl = new URL(event.request.url);
-
-  // // 1. Handle API calls (POST/PUT/DELETE): ALWAYS network first
-  // if (event.request.method !== 'GET' && requestUrl.pathname.includes("/api")) {
-  //   console.log(`[Service Worker] Network WRITE request: ${requestUrl.pathname}`);
-  //   event.respondWith(fetch(event.request));
-  //   return;
-  // }
-
-  // // 2. Handle GET requests: Network first, cache fallback
-  // if (event.request.method === 'GET') {
-  //   event.respondWith(
-  //     fetch(event.request).then(networkResponse => {
-  //       // Cache static assets (only cache if response is ok)
-  //       const netResCpy = networkResponse.clone();
-  //       if (netResCpy.ok) {
-  //         console.log("Caching file: ", requestUrl.pathname);
-  //         caches.open(CACHE_NAME).then(c => c.put(event.request, networkResponse.clone()));
-  //         return networkResponse;
-  //       }
-  //       return networkResponse;
-  //     })
-  //   );
-  //   return;
-  // }
-
-  // // 3. Fallback for unsupported methods (should not happen)
-  // event.respondWith(fetch(event.request));
 });
 
 // Activate event: clean up old caches

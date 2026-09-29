@@ -212,13 +212,9 @@ func GenerateSessionID() string {
 func AuthGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_token")
-		if err != nil || cookie.Value == "" {
-			// No cookie found -> unauthorized/redirect
-			if strings.HasPrefix(r.URL.Path, "/api/") {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			} else {
-				http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-			}
+		if err != nil || cookie == nil || cookie.Value == "" {
+			// No cookie found -> unauthorized
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
@@ -233,11 +229,7 @@ func AuthGuard(next http.Handler) http.Handler {
 				HttpOnly: true,
 			}
 			http.SetCookie(w, &clearCookie)
-			if strings.HasPrefix(r.URL.Path, "/api/") {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			} else {
-				http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-			}
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
