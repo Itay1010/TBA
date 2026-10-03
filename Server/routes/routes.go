@@ -50,7 +50,8 @@ func getSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	sch, err := srv.GetSchedule(r.Context(), models.UserID(userID))
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, "Could not retrieve schedule", err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, "Could not retrieve schedule", err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
@@ -60,26 +61,34 @@ func getSchedule(w http.ResponseWriter, r *http.Request) {
 func saveBlocks(w http.ResponseWriter, r *http.Request) {
 	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusBadRequest)
 		return
 	}
 	if len(req.Blocks) == 0 {
+		jsonResBytes := utl.MakeHttpJsonRes("success", "", nil)
+		w.Write(jsonResBytes)
 		return
 	}
 	blocks := utl.ReqBlocksToDB(models.UserID(req.UserID), req.Blocks)
-
 	err := srv.UpdateBlocks(r.Context(), blocks)
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
+	jsonResBytes := utl.MakeHttpJsonRes("success", "", nil)
+	w.Write(jsonResBytes)
+
 }
+
 func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	var req models.ScheduleReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusBadRequest)
 		return
 	}
@@ -89,11 +98,14 @@ func deleteBlocks(w http.ResponseWriter, r *http.Request) {
 	blocks := utl.ReqBlocksToDB(models.UserID(req.UserID), req.Blocks)
 	err := srv.DeleteBlocks(r.Context(), blocks)
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 
+	jsonResBytes := utl.MakeHttpJsonRes("success", "", nil)
+	w.Write(jsonResBytes)
 }
 func getTea(w http.ResponseWriter, r *http.Request) {
 	c := &http.Client{Timeout: 10 * time.Second}
@@ -142,7 +154,8 @@ func getMe(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := srv.GetUser(r.Context(), models.UserID(userID))
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, "Could not retrieve user profile", err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, "Could not retrieve user profile", err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
@@ -160,7 +173,8 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	providerName := r.FormValue("auth_provider")
 	provider, err := auth.GetOAuthProvider(providerName)
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
@@ -179,14 +193,16 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 func handleCallback(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("provider")
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 
 	provider, err := auth.GetOAuthProvider(cookie.Value)
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
@@ -217,7 +233,8 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	provider, err := auth.GetOAuthProvider(session.AuthProvider)
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}

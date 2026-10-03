@@ -2,6 +2,9 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -53,12 +56,52 @@ type AuthProvider interface {
 
 type (
 	Day       string
+	Days      []Day
 	BlockDays map[Day][]Block
 )
 
+// Value implements driver.Valuer for database persistence as JSON.
+func (d Days) Value() (driver.Value, error) {
+	if d == nil {
+		return "[]", nil
+	}
+	bytes, err := json.Marshal(d)
+	if err != nil {
+		return nil, err
+	}
+	return string(bytes), nil
+}
+
+// Scan implements sql.Scanner for reading JSON from database.
+func (d *Days) Scan(value interface{}) error {
+	if value == nil {
+		*d = Days{}
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("failed to scan type %T into Days", value)
+	}
+	if len(bytes) == 0 {
+		*d = Days{}
+		return nil
+	}
+	return json.Unmarshal(bytes, d)
+}
+
 type Schedule struct {
-	UserID UserID     `json:"user_id"`
-	Blocks *BlockDays `json:"blocks"`
+	UserID UserID  `json:"user_id"`
+	Blocks []Block `json:"blocks"`
+}
+
+type ClientSchedule struct {
+	UserID UserID        `json:"user_id"`
+	Blocks []ClientBlock `json:"blocks"`
 }
 
 const (
@@ -74,26 +117,25 @@ const (
 type Block struct {
 	BlockID   BlockID `json:"block_id" gorm:"primaryKey;type:varchar(191)"`
 	UserID    UserID  `json:"user_id" gorm:"type:varchar(191);index;not null"`
-	Day       Day     `json:"day" gorm:"type:varchar(50)"`
+	Days      Days    `json:"days" gorm:"type:varchar(191)"`
 	Title     string  `json:"title" gorm:"type:varchar(255)"`
 	Color     string  `json:"color" gorm:"type:varchar(50)"`
 	StartTime string  `json:"start_time" gorm:"type:varchar(50)"`
 	EndTime   string  `json:"end_time" gorm:"type:varchar(50)"`
 }
 
-type RequestBlock struct {
+type ClientBlock struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
-	Day       string `json:"day"`
+	Days      string `json:"days"` // Importent: The days are send between client and server as strings, but should ALWAYS parse to an array of blocks.
 	Color     string `json:"color"`
 	StartTime string `json:"startTime"`
 	EndTime   string `json:"endTime"`
 }
-type ResponseBlock struct {
-}
+
 type ScheduleReq struct {
-	UserID string         `json:"user_id"`
-	Blocks []RequestBlock `json:"blocks"`
+	UserID string        `json:"user_id"`
+	Blocks []ClientBlock `json:"blocks"`
 }
 
 /* HTTP RESPONSES */

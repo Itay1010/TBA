@@ -2,35 +2,25 @@
 
 export type Day = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
 
-export type Block = {
-    block_id: string;
-    user_id: string;
-    day: Day | string;
-    title: string;
-    color: string;
-    start_time: string;
-    end_time: string;
-};
-
-export type BlockDays = Partial<Record<Day | string, Block[]>>;
-
-export type Schedule = {
-    user_id: string;
-    blocks?: BlockDays;
-};
-
-export type RequestBlock = {
+export type ClientBlock = {
     id: string;
     title: string;
-    day: string;
+    days: string;
     color: string;
     startTime: string;
     endTime: string;
 };
 
+export type RequestBlock = ClientBlock;
+
+export type ClientSchedule = {
+    user_id: string;
+    blocks: ClientBlock[];
+};
+
 export type ScheduleReq = {
     user_id: string;
-    blocks: RequestBlock[];
+    blocks: ClientBlock[];
 };
 
 export type HttpRes<T> = {

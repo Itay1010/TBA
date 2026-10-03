@@ -47,46 +47,28 @@ async function getFromIndexedDB(key: string): Promise<any> {
 }
 
 /**
- * Saves data to both IndexedDB and localStorage for immediate UI state availability.
+ * Saves data to IndexedDB.
  * @param key Unique key for the data.
  * @param data The schedule data to save.
  */
 export async function IDBSave(key: string, data: any): Promise<void> {
-    console.log('Saving data to persistence layers:', data);
+    console.log('Saving data to IndexedDB:', data);
     try {
-        // 1. Save to IndexedDB (for robust, structured data)
         await saveToIndexedDB(key, data);
         console.log('data saved successfully to IndexedDB.');
-
-        // 2. Save to localStorage (for immediate, simple fallback UI state)
-        if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('calendarSchedule', JSON.stringify(data));
-            console.log('data saved successfully to localStorage.');
-        }
     } catch (error) {
-        console.error('Error saving to IndexedDB or localStorage:', error);
+        console.error('Error saving to IndexedDB:', error);
     }
 }
 
 export async function IDBGet(key: string): Promise<any> {
     const savedFromIDB = await getFromIndexedDB(key);
-
-    // Return data from IDB if available, otherwise fall back to localStorage
     if (savedFromIDB) {
         console.log('Retrieved data from IndexedDB:', savedFromIDB);
         return savedFromIDB;
-    } else {
-        console.warn('No data found in IndexedDB.');
-        if (typeof localStorage !== 'undefined') {
-            console.warn('Attempting fallback from localStorage.')
-            const savedFromLS = localStorage.getItem('calendarSchedule');
-            if (savedFromLS) {
-                return JSON.parse(savedFromLS);
-            }
-            console.warn('No data found in either IndexedDB or localStorage.');
-            return undefined;
-        }
     }
+    console.warn('No data found in IndexedDB for key:', key);
+    return undefined;
 }
 
 export async function IDBGetSchedule(): Promise<UISchedule | null> {

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -205,7 +206,7 @@ func DBLoadSession(session *models.SessionState) error {
 
 /* SCHEDULE / BLOCK OPERATIONS */
 
-func GetSchedule(ctx context.Context, uid models.UserID) (*models.Schedule, error) {
+func GetSchedule(ctx context.Context, uid models.UserID) (*models.ClientSchedule, error) {
 	if dBHandler == nil {
 		return nil, DBE.NotConnected
 	}
@@ -213,14 +214,30 @@ func GetSchedule(ctx context.Context, uid models.UserID) (*models.Schedule, erro
 	if err := dBHandler.WithContext(ctx).Where("user_id = ?", uid).Find(&blocks).Error; err != nil {
 		return nil, err
 	}
-	blockDays := models.BlockDays{}
+	clientBlocks := []models.ClientBlock{}
 	for _, block := range blocks {
-		currDay := block.Day
-		blockDays[currDay] = append(blockDays[currDay], block)
+		daysStr := ""
+		daysBytes, err := json.Marshal(block.Days)
+
+		if err != nil {
+			daysStr = "[]"
+		} else {
+			daysStr = string(daysBytes)
+		}
+
+		cBlock := models.ClientBlock{
+			ID:        string(block.BlockID),
+			Title:     block.Title,
+			Days:      daysStr,
+			Color:     block.Color,
+			StartTime: block.StartTime,
+			EndTime:   block.EndTime,
+		}
+		clientBlocks = append(clientBlocks, cBlock)
 	}
-	sch := models.Schedule{
+	sch := models.ClientSchedule{
 		UserID: uid,
-		Blocks: &blockDays,
+		Blocks: clientBlocks,
 	}
 	return &sch, nil
 }

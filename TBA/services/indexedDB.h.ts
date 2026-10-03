@@ -1,13 +1,12 @@
 // IndexedDB storage type definitions
 
 export type UIBlock = {
-    id: string;
-    title: string;
-    day: string;
     color: string;
-    startTime: string;
+    days: string[];
     endTime: string;
-    userId?: string;
+    id: string;
+    startTime: string;
+    title: string;
 };
 
 export type UISchedule = Record<string, UIBlock[]>;

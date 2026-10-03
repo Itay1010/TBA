@@ -4,7 +4,7 @@ import { fetchSchedule, saveScheduleToApi } from '../services/fetch';
 import { IDBGetSchedule, IDBSetSchedule } from '../services/indexedDb';
 import { normalizeSchedule } from '../services/apiUtils';
 import { getStoredUser, triggerOAuthLogin, fetchCurrentUser, logoutUser } from '../services/auth';
-import { DAYS_OF_WEEK, LOCAL_STORAGE_KEY } from './constants/calendar';
+import { DAYS_OF_WEEK } from './constants/calendar';
 import { generateId, timeToMinutes, minutesToTimeStr } from './utils/timeUtils';
 import Header from './components/Header';
 import CalendarGrid from './components/CalendarGrid/CalendarGrid';
@@ -20,14 +20,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [schedule, setSchedule] = useState(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (saved) {
-      try {
-        return normalizeSchedule(JSON.parse(saved));
-      } catch (e) { }
-    }
     return DAYS_OF_WEEK.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
   });
+
+  const lastSyncedScheduleRef = useRef(null);
 
   const [currentTimeMins, setCurrentTimeMins] = useState(() => {
     const now = new Date();
@@ -45,9 +41,9 @@ export default function App() {
     }
   });
 
-  // Effect to save to local storage whenever schedule changes (for immediate UI feedback)
+  // Effect to save to IndexedDB whenever schedule changes (for local persistence)
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(schedule));
+    IDBSetSchedule(schedule);
   }, [schedule]);
 
   useEffect(() => {
@@ -60,36 +56,26 @@ export default function App() {
         console.warn('Failed to verify session on mount:', authErr);
       }
 
-      // 2. Fetch schedule
-      try {
-        // Directly fetch from API to bypass the Service Worker race condition
-        // If the SW hasn't finished dumping to IDB, this ensures we get the freshest state on load.
-        const freshSchedule = await fetchSchedule();
-        if (freshSchedule && Object.keys(freshSchedule).length !== 0) {
-          await IDBSetSchedule(freshSchedule); // Sync DB so SW stays happy
-          setSchedule(freshSchedule);
-          return;
-        }
-      } catch (apiError) {
-        console.warn('API fetch failed, falling back to local persistence layers.', apiError);
-      }
-
-      // Fallback: Read from IndexedDB / LocalStorage if offline or direct fetch failed
+      // 2. Load cached schedule from IndexedDB for immediate UI availability
       try {
         const dbSchedule = await IDBGetSchedule();
-
         if (dbSchedule && Object.keys(dbSchedule).length !== 0) {
-          return setSchedule(normalizeSchedule(dbSchedule));
+          setSchedule(dbSchedule);
         }
+      } catch (idbErr) {
+        console.warn('Error reading from IndexedDB on mount:', idbErr);
+      }
 
-        console.log('IndexedDB empty, attempting localStorage fallback.');
-        const localSchedule = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (localSchedule) {
-          const parsedSched = JSON.parse(localSchedule);
-          return setSchedule(normalizeSchedule(parsedSched));
+      // 3. Fetch fresh schedule from API
+      try {
+        const freshSchedule = await fetchSchedule();
+        if (freshSchedule && Object.keys(freshSchedule).length !== 0) {
+          await IDBSetSchedule(freshSchedule);
+          setSchedule(freshSchedule);
+          lastSyncedScheduleRef.current = freshSchedule;
         }
-      } catch (e) {
-        console.error('Error reading schedule from local persistence layers.', e);
+      } catch (apiError) {
+        console.warn('API fetch failed, using IndexedDB schedule.', apiError);
       }
     };
 
@@ -109,9 +95,10 @@ export default function App() {
   const handleSaveSchedule = async () => {
     console.log('Attempting to save schedule:', schedule);
     const userId = currentUser?.id || '';
-    const success = await saveScheduleToApi(schedule, userId);
+    const success = await saveScheduleToApi(schedule, userId, lastSyncedScheduleRef.current);
 
     if (success) {
+      lastSyncedScheduleRef.current = schedule;
       console.log('Schedule saved successfully.');
       Notify({
         title: 'שמירה בוצעה',
@@ -192,11 +179,12 @@ export default function App() {
     allOccurrences.forEach((occ) => {
       const key = `${occ.startTime}-${occ.endTime}`;
       if (!slotsMap[key]) {
+        const initialDays = Array.isArray(occ.days) ? [...occ.days] : [];
         slotsMap[key] = {
           id: generateId(),
           startTime: occ.startTime,
           endTime: occ.endTime,
-          days: []
+          days: initialDays
         };
       }
       if (!slotsMap[key].days.includes(occ.day)) {
@@ -316,7 +304,7 @@ export default function App() {
               color: formData.color,
               startTime: finalStart,
               endTime: finalEnd,
-              day: day
+              days: slot.days
             }
           ];
         });

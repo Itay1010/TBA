@@ -10,12 +10,6 @@ import (
 )
 
 func main() {
-	loggerFile := srv.WireLogger()
-	if loggerFile == nil {
-		panic(fmt.Errorf("error: Logger cannot be wired for some reason"))
-	}
-	defer loggerFile.Close()
-
 	err := srv.LoadEnv()
 	if err != nil {
 		panic(err)

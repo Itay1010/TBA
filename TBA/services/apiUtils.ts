@@ -1,5 +1,5 @@
-import { HttpRes, RequestBlock, ScheduleReq, Day } from './apiModels';
-import { UISchedule } from './indexedDB.h';
+import { HttpRes, ClientBlock, ScheduleReq, Day } from './apiModels';
+import { UIBlock, UISchedule } from './indexedDB.h';
 
 export const DAYS_OF_WEEK: Day[] = [
     "Sunday",
@@ -10,6 +10,69 @@ export const DAYS_OF_WEEK: Day[] = [
     "Friday",
     "Saturday"
 ];
+
+/**
+ * Normalizes any day name string into a capitalized Day type ("Sunday", "Monday", ...).
+ */
+export function normalizeDayName(name: string): Day | null {
+    if (!name || typeof name !== 'string') return null;
+    const lower = name.trim().toLowerCase();
+    const match = DAYS_OF_WEEK.find(d => d.toLowerCase() === lower);
+    return match || null;
+}
+
+/**
+ * Extracts and normalizes an array of capitalized day names from various block formats:
+ * - JSON-stringified array (e.g. '["Sunday","Monday"]') from server ClientBlock
+ * - Array of day strings (e.g. ['Sunday', 'Monday']) from server Block / UIBlock
+ * - Comma-separated strings (e.g. 'Sunday, Monday')
+ * - Legacy singular day string (e.g. block.day = 'Sunday')
+ */
+export function extractDays(b: any): Day[] {
+    if (!b || typeof b !== 'object') return [];
+    const rawDays = b.days !== undefined && b.days !== null ? b.days : b.day;
+    const resultDays: Day[] = [];
+
+    if (Array.isArray(rawDays)) {
+        for (const item of rawDays) {
+            const normalized = normalizeDayName(String(item));
+            if (normalized && !resultDays.includes(normalized)) {
+                resultDays.push(normalized);
+            }
+        }
+    } else if (typeof rawDays === 'string') {
+        const trimmed = rawDays.trim();
+        if (trimmed) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                    for (const item of parsed) {
+                        const normalized = normalizeDayName(String(item));
+                        if (normalized && !resultDays.includes(normalized)) {
+                            resultDays.push(normalized);
+                        }
+                    }
+                } else if (typeof parsed === 'string') {
+                    const normalized = normalizeDayName(parsed);
+                    if (normalized && !resultDays.includes(normalized)) {
+                        resultDays.push(normalized);
+                    }
+                }
+            } catch {
+                // If not JSON, try splitting by comma
+                const parts = trimmed.split(',');
+                for (const p of parts) {
+                    const normalized = normalizeDayName(p);
+                    if (normalized && !resultDays.includes(normalized)) {
+                        resultDays.push(normalized);
+                    }
+                }
+            }
+        }
+    }
+
+    return resultDays;
+}
 
 /**
  * Safely unpacks HttpRes wrapper if present.
@@ -29,15 +92,32 @@ export function unpackHttpRes<T>(res: HttpRes<T> | T | null | undefined): T | nu
 
 /**
  * Transforms server Schedule or HttpRes<Schedule> or local object into normalized UISchedule.
- * Handles both snake_case (start_time, end_time, block_id) from Go Block model and camelCase from UI.
+ * Ensures the output shape is:
+ * {
+ *   [Day: "Sunday" | "Monday" | ...]: [
+ *     {
+ *       color: string,
+ *       days: string[],
+ *       endTime: string ("HH:MM"),
+ *       id: string,
+ *       startTime: string ("HH:MM"),
+ *       title: string
+ *     }
+ *   ]
+ * }
  */
 export function normalizeSchedule(input: any): UISchedule {
-    const result: UISchedule = {};
-    for (const d of DAYS_OF_WEEK) {
-        result[d] = [];
-    }
+    const result: UISchedule = {
+        Sunday: [],
+        Monday: [],
+        Tuesday: [],
+        Wednesday: [],
+        Thursday: [],
+        Friday: [],
+        Saturday: []
+    };
 
-    if (!input || typeof input !== 'object') {
+    if (!input) {
         return result;
     }
 
@@ -49,46 +129,100 @@ export function normalizeSchedule(input: any): UISchedule {
             return result;
         }
     }
-
-    if ('data' in raw && raw.data) {
+    if (raw && typeof raw === 'object' && 'data' in raw && raw.data) {
         raw = raw.data;
     }
+    if (!raw) {
+        return result;
+    }
 
-    // Check if `blocks` container exists (as in backend Schedule model)
-    const blocksMap = raw.blocks && typeof raw.blocks === 'object' ? raw.blocks : raw;
-    const userId = raw.user_id || '';
+    // Check if `blocks` container exists (as in backend ClientSchedule or Schedule model)
+    const blocksSource = raw.blocks !== undefined && raw.blocks !== null ? raw.blocks : raw;
+    const userId = raw.user_id || raw.userId || '';
 
-    // If blocks is an array (e.g. ScheduleReq format), group by day
-    if (Array.isArray(blocksMap)) {
-        for (const b of blocksMap) {
-            const dayName = b.day || 'Sunday';
-            if (!result[dayName]) result[dayName] = [];
-            result[dayName].push({
-                id: b.id || b.block_id || '',
-                title: b.title || '',
-                day: dayName,
+    // If blocks is an array (e.g. ScheduleReq or ClientSchedule.blocks format)
+    if (Array.isArray(blocksSource)) {
+        for (const b of blocksSource) {
+            if (!b || typeof b !== 'object') continue;
+            let days = extractDays(b);
+            if (days.length === 0) {
+                days = ["Sunday"];
+            }
+
+            const uiBlock: UIBlock = {
                 color: b.color || 'blue',
-                startTime: b.startTime || b.start_time || '09:00',
+                days: days,
                 endTime: b.endTime || b.end_time || '10:00',
-                userId: b.user_id || userId
-            });
+                id: b.id || b.block_id || '',
+                startTime: b.startTime || b.start_time || '09:00',
+                title: b.title || '',
+                ...(userId || b.userId || b.user_id ? { userId: b.userId || b.user_id || userId } : {})
+            };
+
+            for (const d of days) {
+                if (result[d]) {
+                    // Avoid duplicate insertion of the same block id in the same day column
+                    if (!result[d].some(existing => existing.id === uiBlock.id)) {
+                        result[d].push({ ...uiBlock });
+                    }
+                }
+            }
         }
         return result;
     }
 
-    // Otherwise it is a map of day -> blocks array
-    for (const d of DAYS_OF_WEEK) {
-        const list = blocksMap[d];
-        if (Array.isArray(list)) {
-            result[d] = list.map((b: any) => ({
-                id: b.id || b.block_id || '',
-                title: b.title || '',
-                day: b.day || d,
-                color: b.color || 'blue',
-                startTime: b.startTime || b.start_time || '09:00',
-                endTime: b.endTime || b.end_time || '10:00',
-                userId: b.user_id || userId
-            }));
+    // Otherwise blocksSource is a day -> blocks map (e.g. UISchedule or legacy BlockDays)
+    if (typeof blocksSource === 'object') {
+        for (const d of DAYS_OF_WEEK) {
+            const dayContent = blocksSource[d];
+            if (Array.isArray(dayContent)) {
+                for (const b of dayContent) {
+                    if (!b || typeof b !== 'object') continue;
+                    let days = extractDays(b);
+                    if (days.length === 0) {
+                        days = [d];
+                    } else if (!days.includes(d)) {
+                        days.push(d);
+                    }
+
+                    const uiBlock: UIBlock = {
+                        color: b.color || 'blue',
+                        days: days,
+                        endTime: b.endTime || b.end_time || '10:00',
+                        id: b.id || b.block_id || '',
+                        startTime: b.startTime || b.start_time || '09:00',
+                        title: b.title || '',
+                        ...(userId || b.userId || b.user_id ? { userId: b.userId || b.user_id || userId } : {})
+                    };
+
+                    if (!result[d].some(existing => existing.id === uiBlock.id)) {
+                        result[d].push(uiBlock);
+                    }
+                }
+            } else if (dayContent && typeof dayContent === 'object') {
+                // Single block object placed directly on the day key
+                const b = dayContent;
+                let days = extractDays(b);
+                if (days.length === 0) {
+                    days = [d];
+                } else if (!days.includes(d)) {
+                    days.push(d);
+                }
+
+                const uiBlock: UIBlock = {
+                    color: b.color || 'blue',
+                    days: days,
+                    endTime: b.endTime || b.end_time || '10:00',
+                    id: b.id || b.block_id || '',
+                    startTime: b.startTime || b.start_time || '09:00',
+                    title: b.title || '',
+                    ...(userId || b.userId || b.user_id ? { userId: b.userId || b.user_id || userId } : {})
+                };
+
+                if (!result[d].some(existing => existing.id === uiBlock.id)) {
+                    result[d].push(uiBlock);
+                }
+            }
         }
     }
 
@@ -97,30 +231,55 @@ export function normalizeSchedule(input: any): UISchedule {
 
 /**
  * Converts normalized UI schedule state into backend ScheduleReq payload format.
+ * Deduplicates blocks by ID across the week and serializes days as a JSON string.
  */
 export function toScheduleReq(uiSchedule: UISchedule, userId: string = ''): ScheduleReq {
-    const flatBlocks: RequestBlock[] = [];
+    const newBlocks = new Map<string, UIBlock>();
 
     if (uiSchedule && typeof uiSchedule === 'object') {
-        for (const day of Object.keys(uiSchedule)) {
-            const dayBlocks = uiSchedule[day];
+        DAYS_OF_WEEK.forEach(dayName => {
+            const dayBlocks = uiSchedule[dayName];
             if (Array.isArray(dayBlocks)) {
-                for (const b of dayBlocks) {
-                    flatBlocks.push({
-                        id: b.id || (b as any).block_id || '',
-                        title: b.title || '',
-                        day: b.day || day,
-                        color: b.color || 'blue',
-                        startTime: b.startTime || (b as any).start_time || '',
-                        endTime: b.endTime || (b as any).end_time || ''
-                    });
-                }
+                dayBlocks.forEach(block => {
+                    const id = block?.id || (block as any)?.block_id;
+                    if (!id) return;
+
+                    const existing = newBlocks.get(id);
+                    if (!existing) {
+                        // First time seeing this block: extract or initialize its days list with dayName
+                        const rawDays = Array.isArray(block.days)
+                            ? [...block.days]
+                            : (typeof block.days === 'string' ? extractDays(block) : []);
+                        if (!rawDays.includes(dayName)) {
+                            rawDays.push(dayName);
+                        }
+                        newBlocks.set(id, {
+                            ...block,
+                            id,
+                            days: rawDays
+                        });
+                    } else {
+                        // Already seen on another day: ensure dayName is included in its days list
+                        if (!existing.days.includes(dayName)) {
+                            existing.days.push(dayName);
+                        }
+                    }
+                });
             }
-        }
+        });
     }
+
+    const clientBlocks: ClientBlock[] = Array.from(newBlocks.values()).map(b => ({
+        id: b.id,
+        title: b.title || '',
+        days: JSON.stringify(b.days || []),
+        color: b.color || 'blue',
+        startTime: b.startTime || (b as any).start_time || '09:00',
+        endTime: b.endTime || (b as any).end_time || '10:00'
+    }));
 
     return {
         user_id: userId,
-        blocks: flatBlocks
+        blocks: clientBlocks
     };
 }

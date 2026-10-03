@@ -34,6 +34,7 @@
       font-weight: 700;
       color: var(--text-main);
     }
+
     .btn-close {
       padding: 7px;
       border-radius: 50%;
@@ -44,6 +45,7 @@
       align-items: center;
       justify-content: center;
       transition: all 0.2s ease;
+
       &:hover {
         color: var(--text-main);
         background-color: var(--border-light);
@@ -89,6 +91,7 @@
     display: flex;
     gap: 16px;
     margin-bottom: 16px;
+
     .form-group {
       flex: 1;
       margin-bottom: 0;
@@ -97,6 +100,7 @@
 
   .color-picker {
     display: flex;
+    justify-content: center;
     gap: 12px;
 
     .color-btn {
@@ -115,6 +119,7 @@
           0 0 0 2px var(--bg-surface),
           0 0 0 4px var(--primary);
       }
+
       &:hover {
         transform: scale(1.1);
       }
@@ -139,9 +144,11 @@
       border-radius: 9999px;
       transition: background-color 0.2s ease;
       border: 1px solid transparent;
+
       svg {
         margin-left: 6px;
       }
+
       &:hover {
         background-color: var(--danger-light);
         border-color: rgba(184, 58, 46, 0.2);
@@ -160,6 +167,7 @@
         color: var(--text-muted);
         border: 1px solid var(--border-light);
         transition: all 0.2s ease;
+
         &:hover {
           background-color: var(--bg-grid);
           color: var(--text-main);
@@ -180,6 +188,7 @@
           background-color: var(--primary-hover);
           transform: translateY(-1px);
         }
+
         &:disabled {
           opacity: 0.5;
           cursor: not-allowed;
@@ -281,8 +290,8 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
-

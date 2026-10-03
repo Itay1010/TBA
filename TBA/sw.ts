@@ -42,21 +42,21 @@ async function networkFirst(request: Request) {
   const requestUrl = new URL(request.url)
   const requestPathname = requestUrl.pathname
   const isApiRequest = requestPathname.includes("/api")
-  const isApiScheduleReq = isApiRequest && requestPathname.includes("/api/schedule") && request.method == "POST";
+  const isApiScheduleReq = isApiRequest && requestPathname.includes("/api/schedule") && request.method === 'POST';
   const isAuthRequest = requestPathname.includes("/auth")
-  const bypassCache = isAuthRequest || requestUrl.hostname.includes("google")
+  const bypassCache = isAuthRequest || requestUrl.hostname.includes("google") || requestUrl.hostname.includes("github")
   const reqCpy = request.clone()
   try {
     const networkResponse = await fetch(request);
 
-    if(bypassCache)
+    if (bypassCache)
       return networkResponse
 
     if (isApiScheduleReq) {
       try {
         const reqSchedule = await reqCpy.json();
         console.log('[SW]: Saving schedule to IDB based on POST req.');
-        
+
         if (reqSchedule) {
           const normalized = normalizeSchedule(reqSchedule);
           IDBSetSchedule(normalized);
@@ -85,9 +85,9 @@ async function networkFirst(request: Request) {
     return networkResponse;
   } catch (error) {
     console.error("Network fetch failed.", error);
-    if (isApiScheduleReq || isAuthRequest)
-      return new Response(null, { status: 200 });
-
+    if (isApiRequest || isAuthRequest) {
+      return Response.error();
+    }
     console.log("Returning cached response.");
     const cachedResponse = await caches.match(request);
     return cachedResponse || Response.error();

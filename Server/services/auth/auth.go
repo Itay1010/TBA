@@ -11,6 +11,7 @@ import (
 	"os"
 	"server/models"
 	srv "server/services"
+	utl "server/utils"
 	"strings"
 	"time"
 
@@ -47,7 +48,8 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	oauthStateCookie, err := r.Cookie("oauthstate")
 	if err != nil || r.FormValue("state") != oauthStateCookie.Value {
 		errStr := "Invalid OAuth state"
-		jsonRes := srv.MakeHttpJsonRes[any](nil, errStr, err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, errStr, err)
+		jsonRes := string(jsonResBytes)
 		if jsonRes == "" {
 			http.Error(w, errStr, http.StatusBadRequest)
 			return
@@ -68,14 +70,16 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	token, err := PM.ProviderConfig.Exchange(context.Background(), code)
 	if err != nil {
 		errStr := fmt.Sprintf("Code exchange failed: %s", err.Error())
-		jsonRes := srv.MakeHttpJsonRes[any](nil, errStr, err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, errStr, err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	idToken := token.Extra("id_token")
 	if idt, ok := idToken.(string); !ok {
 		errStr := "Unexpected error: missing token field. This is a server error."
-		jsonRes := srv.MakeHttpJsonRes[any](nil, errStr, err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, errStr, err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	} else {
@@ -87,26 +91,30 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	client := PM.ProviderConfig.Client(context.Background(), token)
 	endpoint := PM.GetUserInfoURL()
 	if endpoint == "" {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, "Provider config error", err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, "Provider config error", err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	resp, err := client.Get(endpoint)
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, fmt.Sprintf("Failed to get user info: %s", err.Error()), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, fmt.Sprintf("Failed to get user info: %s", err.Error()), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, fmt.Sprintf("provider returned status %d", resp.StatusCode), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, fmt.Sprintf("provider returned status %d", resp.StatusCode), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
 
 	var rawProfile map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&rawProfile); err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, fmt.Sprintf("failed to decode user profile: %s", err.Error()), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, fmt.Sprintf("failed to decode user profile: %s", err.Error()), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
@@ -114,7 +122,8 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	// Upsert User record
 	userObj, err := getUserFromRawProfile(rawProfile, PM.ProviderName)
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, err.Error(), err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
@@ -126,7 +135,8 @@ func (PM *ProviderManager) Callback(w http.ResponseWriter, r *http.Request) {
 	// Store full session with OAuth tokens in DB
 	session, err := srv.CreateSession(r.Context(), sessionID, userObj.UserID, PM.ProviderName, token)
 	if err != nil {
-		jsonRes := srv.MakeHttpJsonRes[any](nil, "Failed to store session", err)
+		jsonResBytes := utl.MakeHttpJsonRes[any](nil, "Failed to store session", err)
+		jsonRes := string(jsonResBytes)
 		http.Error(w, jsonRes, http.StatusInternalServerError)
 		return
 	}
