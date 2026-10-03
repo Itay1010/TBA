@@ -116,9 +116,8 @@ export async function deleteEmptyBlocks(
     if (!oldBlocks || !newBlocks) {
         return false;
     }
-    
+
     const blocksToDelete = getBlocksDiff(oldBlocks, newBlocks);
-    console.log("diff: ", blocksToDelete);
     if (blocksToDelete.length === 0) {
         return true;
     }
